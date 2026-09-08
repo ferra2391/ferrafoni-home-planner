@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Casa Ferrafoni">
+<meta name="theme-color" content="#16222C">
+<title>Ferrafoni Home Planner</title>
+<style>
+:root{
+  --ink:#16222C; --ink-hi:#22323F; --ink-lo:#0F1A22;
+  --paper:#EAE7DE; --card:#FCFBF8;
+  --line:#D9D4C7; --line-soft:#E6E2D7;
+  --text:#202E38; --muted:#6E7A83; --muted-ink:#8FA0AC;
+
+  --pulizie:#2F7D6D;
+  --calendario:#3D5BA9;
+  --spesa:#B9741F;
+  --attivita:#9C3A5E;
+  --oggi:#4A5A64;
+
+  --rosso:#BE3227;
+  --rosso-bg:#FBEDEB;
+  --ambra:#C98A16;
+
+  --accent:var(--oggi);
+  --r:10px;
+  --sidebar:272px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--paper); color:var(--text);
+  font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  overflow:hidden; -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.app{display:grid;grid-template-columns:var(--sidebar) 1fr;height:100vh;height:100dvh}
+.app.focus{grid-template-columns:0 1fr}
+.app.focus .rail{display:none}
+
+/* ---------------- colonna moduli ---------------- */
+.rail{background:var(--ink);color:#E7EBEE;display:flex;flex-direction:column;padding:20px 0 12px;overflow-y:auto}
+.brand{padding:0 22px 18px;border-bottom:1px solid rgba(255,255,255,.09);margin-bottom:14px}
+.brand .house{display:inline-flex;align-items:center;gap:7px;margin-bottom:10px;font-size:12px;color:var(--muted-ink)}
+.dot{width:7px;height:7px;border-radius:50%;background:#5FBF9E;display:inline-block}
+.brand h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.025em;color:#fff}
+.brand p{margin:3px 0 0;font-size:12.5px;color:var(--muted-ink)}
+.rail h2{margin:0;padding:0 22px 8px;font-size:11.5px;font-weight:500;letter-spacing:.03em;color:#657785}
+.nav{list-style:none;margin:0 0 8px;padding:0}
+.nav>li{margin-bottom:1px}
+.mod{width:100%;display:flex;align-items:center;gap:11px;padding:13px 20px 13px 18px;
+  border-left:4px solid transparent;text-align:left;font-size:15px;color:#CDD6DC;transition:background .14s,color .14s}
+.mod:hover{background:var(--ink-hi);color:#fff}
+.mod .tag{width:9px;height:9px;border-radius:2.5px;background:currentColor;flex:none;opacity:.9}
+.mod .name{flex:1;letter-spacing:-.005em}
+.mod .count{font-size:11.5px;min-width:21px;height:21px;padding:0 6px;border-radius:11px;
+  background:rgba(255,255,255,.1);color:#B9C6CE;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.mod .count.hot{background:var(--rosso);color:#fff}
+.mod .chev{width:9px;height:9px;border-right:1.6px solid #6C7E8B;border-bottom:1.6px solid #6C7E8B;
+  transform:rotate(-45deg);transition:transform .18s;flex:none}
+li.open .chev{transform:rotate(45deg)}
+li.active .mod{background:var(--ink-lo);color:#fff;border-left-color:var(--c)}
+li.active .mod .tag{color:var(--c);opacity:1}
+.sub{list-style:none;margin:0;padding:2px 0 8px;display:none}
+li.open .sub{display:block}
+.sub button{width:100%;text-align:left;padding:10px 20px 10px 45px;font-size:13.5px;color:#93A3AE;position:relative;transition:.14s}
+.sub button:hover{color:#E7EBEE;background:var(--ink-hi)}
+.sub button.on{color:#fff}
+.sub button.on::before{content:"";position:absolute;left:30px;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:var(--c)}
+.rail-foot{margin-top:auto;padding:12px 20px 0;border-top:1px solid rgba(255,255,255,.09);display:grid;gap:10px}
+.rail-foot button{display:flex;align-items:center;gap:9px;font-size:13px;color:#B9C6CE;padding:8px 2px;width:100%;text-align:left}
+.rail-foot button:hover{color:#fff}
+
+/* ---------------- testata ---------------- */
+.main{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
+  padding:18px 28px 14px;border-bottom:1px solid var(--line);background:var(--paper)}
+.top .path{font-size:12.5px;color:var(--muted);margin:0 0 4px}
+.top h2{margin:0;font-size:25px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.actions{display:flex;align-items:center;gap:16px}
+.people{display:flex}
+.people .av{width:34px;height:34px;border-radius:50%;border:2px solid var(--paper);margin-left:-9px;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff}
+.today-date{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.today-date b{display:block;color:var(--text);font-size:15px;font-weight:600}
+.btn{height:44px;padding:0 18px;border-radius:9px;background:var(--accent);color:#fff;font-size:14.5px;font-weight:500;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:filter .14s}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{filter:brightness(.94)}
+.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}
+.btn.ghost:hover{filter:none;background:#F6F4ED}
+.btn.sm{height:38px;padding:0 13px;font-size:13.5px}
+
+.scroll{flex:1;overflow-y:auto;padding:22px 28px 48px;-webkit-overflow-scrolling:touch}
+.view{display:none}
+.view.on{display:block}
+
+/* ---------------- pannelli ---------------- */
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g-side{grid-template-columns:1.6fr 1fr}
+.g-side-l{grid-template-columns:1fr 1.6fr}
+@media(max-width:1180px){.g3{grid-template-columns:1fr 1fr}.g-side,.g-side-l{grid-template-columns:1fr}}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.panel>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line-soft)}
+.panel>header h3{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+.panel>header .meta{font-size:12.5px;color:var(--muted)}
+.panel .body{padding:16px 18px}
+.panel .body.flush{padding:0}
+.panel.tint>header{box-shadow:inset 3px 0 0 var(--c)}
+.panel.alert{border-color:#E7C6C1}
+.panel.alert>header{background:var(--rosso-bg);box-shadow:inset 3px 0 0 var(--rosso);border-bottom-color:#EFD6D2}
+.panel.alert>header h3{color:var(--rosso)}
+
+.rows{list-style:none;margin:0;padding:0}
+.rows li{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line-soft);min-height:56px}
+.rows li:last-child{border-bottom:0}
+.rows .t{flex:1;min-width:0}
+.rows .t strong{display:block;font-weight:500;font-size:14.5px}
+.rows .t span{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.rows .when{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rows li.urgente{background:var(--rosso-bg)}
+.rows li.urgente .t strong{color:var(--rosso)}
+.rows li.urgente .when{color:var(--rosso);font-weight:600}
+
+.chip{display:inline-flex;align-items:center;gap:6px;height:25px;padding:0 9px;border-radius:6px;font-size:12px;font-weight:500;
+  background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c);white-space:nowrap}
+.chip.grey{background:#EFEDE6;color:var(--muted)}
+.chip.red{background:#F6DCD8;color:var(--rosso)}
+.chip.amber{background:#F8EBD0;color:#8A5F0B}
+
+.bar{height:7px;border-radius:4px;background:#E8E5DB;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--c);transition:width .25s}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:var(--r);
+  background:var(--card);overflow:hidden;margin-bottom:18px}
+.stat{padding:15px 18px;border-right:1px solid var(--line-soft)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-size:29px;font-weight:700;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;color:var(--c)}
+.stat span{display:block;font-size:12.5px;color:var(--muted);margin-top:7px}
+
+/* ---------------- checklist pulizie ---------------- */
+.weekbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r);margin-bottom:18px}
+.weekbar .nav-w{width:46px;height:46px;border-radius:9px;border:1px solid var(--line);background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--muted)}
+.weekbar .nav-w:hover{background:#F6F4ED;color:var(--text)}
+.weekbar .lbl{flex:1;min-width:0}
+.weekbar .lbl b{display:block;font-size:17px;font-weight:600;letter-spacing:-.02em}
+.weekbar .lbl span{font-size:12.5px;color:var(--muted)}
+.weekbar .prog{width:190px}
+.weekbar .prog .n{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+
+.areahead{display:flex;align-items:center;gap:10px;padding:10px 18px;background:#F3F0E8;border-bottom:1px solid var(--line-soft)}
+.areahead b{font-size:13px;font-weight:600}
+.areahead span{font-size:12px;color:var(--muted)}
+
+.task{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line-soft);min-height:64px}
+.task:last-child{border-bottom:0}
+.task .ico{font-size:19px;width:26px;text-align:center;flex:none}
+.task .t{flex:1;min-width:0}
+.task .t strong{display:block;font-size:15px;font-weight:500}
+.task .t span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.task .stamp{font-size:12.5px;color:var(--muted);text-align:right;min-width:118px;font-variant-numeric:tabular-nums}
+.task .stamp b{display:block;color:var(--text);font-weight:600}
+.task .stamp.tap{cursor:pointer;padding:6px 8px;border-radius:7px}
+.task .stamp.tap:hover{background:#F1EEE6}
+.mark{display:flex;gap:8px;flex:none}
+.mark button{height:48px;min-width:96px;padding:0 14px;border-radius:9px;border:1.5px solid var(--line);
+  background:#fff;font-size:14px;font-weight:500;color:var(--muted);transition:.12s}
+.mark button:hover{border-color:#BDB6A5}
+.mark button.on-f{background:var(--pulizie);border-color:var(--pulizie);color:#fff}
+.mark button.on-p{background:var(--ambra);border-color:var(--ambra);color:#fff}
+.task.fatto{background:#F5F8F6}
+.task.fatto .t strong{color:#3E6A5F}
+.task.scaduto .t strong{color:var(--rosso)}
+.task.scaduto .t span{color:var(--rosso)}
+
+/* tabella */
+.board{width:100%;border-collapse:collapse}
+.board th,.board td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line-soft);font-size:14px}
+.board th{font-size:12.5px;font-weight:500;color:var(--muted);background:#F6F4ED}
+.board tr:last-child td{border-bottom:0}
+.board .sm{font-size:12.5px;color:var(--muted);display:block}
+.board td.num{font-variant-numeric:tabular-nums}
+
+/* settimana calendario */
+.week{display:grid;grid-template-columns:repeat(7,1fr)}
+.day{border-right:1px solid var(--line-soft);min-height:200px;padding:10px 9px}
+.day:last-child{border-right:0}
+.day.today{background:#F5F2E9}
+.day h4{margin:0 0 9px;font-size:12.5px;color:var(--muted);font-weight:500}
+.day h4 b{display:block;font-size:17px;color:var(--text);font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:1px}
+.ev{border-radius:6px;padding:7px 8px;margin-bottom:6px;font-size:12px;line-height:1.3;
+  background:color-mix(in srgb,var(--ec) 13%,transparent);border-left:2.5px solid var(--ec);color:#26333C}
+.ev b{display:block;font-weight:600}
+.ev span{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* impostazioni */
+.cfg{list-style:none;margin:0;padding:0}
+.cfg li{display:flex;align-items:center;gap:20px;padding:15px 18px;border-bottom:1px solid var(--line-soft);min-height:64px}
+.cfg li:last-child{border-bottom:0}
+.cfg .t{flex:1;min-width:0}
+.cfg .t strong{display:block;font-weight:500;font-size:14.5px}
+.cfg .t span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;max-width:58ch}
+.sw{width:52px;height:31px;border-radius:16px;background:#DAD5C8;position:relative;flex:none;transition:background .18s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:25px;height:25px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .18s}
+.sw.on{background:var(--c)}
+.sw.on::after{transform:translateX(21px)}
+select,input[type=text],input[type=number],input[type=time],input[type=date]{
+  font:inherit;font-size:14.5px;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;
+  background:#fff;color:var(--text);min-width:150px}
+input[type=text]{min-width:200px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#fff}
+.seg button{padding:11px 16px;font-size:13.5px;color:var(--muted);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--c);color:#fff}
+.tags{display:flex;flex-wrap:wrap;gap:8px}
+.tag-i{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:9px;
+  border:1px solid var(--line);background:#fff;font-size:13.5px}
+.tag-i i{width:9px;height:9px;border-radius:2.5px;display:block}
+.tag-i .x{color:var(--muted);font-size:17px;line-height:1}
+.tag-i.add{border-style:dashed;color:var(--muted)}
+.hint{margin:14px 0 0;font-size:12.5px;color:var(--muted);max-width:72ch}
+.section-t{margin:22px 0 11px;font-size:13px;color:var(--muted);font-weight:500}
+
+/* mock iPhone comandi rapidi */
+.phone{width:290px;border-radius:34px;border:9px solid #1A1A1C;background:#0F1216;padding:16px 12px 20px;
+  color:#fff;margin:0 auto;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.phone .bar-t{display:flex;justify-content:space-between;font-size:11px;color:#9AA4AC;padding:0 8px 16px}
+.phone .q{font-size:15px;font-weight:600;text-align:center;padding:0 6px 16px;line-height:1.35}
+.phone .opt{background:#232A31;border-radius:12px;padding:14px;margin-bottom:9px;font-size:14.5px;display:flex;align-items:center;gap:10px}
+.phone .opt em{font-style:normal;font-size:17px}
+.phone .opt.p{background:var(--spesa)}
+.flow{list-style:none;margin:0;padding:0;counter-reset:s}
+.flow li{position:relative;padding:0 0 18px 38px;counter-increment:s;font-size:14px}
+.flow li::before{content:counter(s);position:absolute;left:0;top:0;width:25px;height:25px;border-radius:50%;
+  background:var(--spesa);color:#fff;font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.flow li::after{content:"";position:absolute;left:12px;top:28px;bottom:2px;width:1.5px;background:var(--line)}
+.flow li:last-child{padding-bottom:0}
+.flow li:last-child::after{display:none}
+.flow b{display:block;font-weight:600;margin-bottom:2px}
+.flow span{color:var(--muted);font-size:13px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:#EFEDE6;padding:2px 5px;border-radius:4px}
+
+/* modale data */
+.veil{position:fixed;inset:0;background:rgba(15,26,34,.5);display:none;align-items:center;justify-content:center;z-index:40;padding:24px}
+.veil.on{display:flex}
+.sheet{background:var(--card);border-radius:16px;width:520px;max-width:100%;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.28)}
+.sheet header{padding:20px 22px 4px}
+.sheet header h3{margin:0;font-size:19px;font-weight:600;letter-spacing:-.02em}
+.sheet header p{margin:5px 0 0;font-size:13.5px;color:var(--muted)}
+.sheet .opts{padding:18px 22px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .opts button{height:64px;border-radius:11px;border:1.5px solid var(--line);background:#fff;font-size:16px;font-weight:500}
+.sheet .opts button:hover{border-color:var(--pulizie);color:var(--pulizie)}
+.sheet .opts button.wide{grid-column:1/-1;height:56px;font-size:15px}
+.sheet .who-row{padding:0 22px 18px}
+.sheet .who-row .section-t{margin-top:0}
+.sheet footer{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--line-soft);background:#F6F4ED}
+.picker{display:flex;gap:10px;align-items:center;padding:0 22px 18px}
+.picker input{flex:1}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===================== COLONNA MODULI ===================== -->
+  <nav class="rail" aria-label="Moduli">
+    <div class="brand">
+      <div class="house"><span class="dot"></span> Casa Ferrafoni</div>
+      <h1>Home Planner</h1>
+      <p>Davide, Vivien, Amelie e Maddie</p>
+    </div>
+
+    <h2>Panoramica</h2>
+    <ul class="nav">
+      <li data-mod="oggi" style="--c:var(--oggi)" class="active">
+        <button class="mod" data-view="oggi"><span class="tag"></span><span class="name">Oggi</span>
+          <span class="count hot" id="cnt-urg">3</span></button>
+      </li>
+    </ul>
+
+    <h2>Moduli</h2>
+    <ul class="nav">
+      <li data-mod="pulizie" style="--c:var(--pulizie)">
+        <button class="mod"><span class="tag"></span><span class="name">Pulizie</span>
+          <span class="count" id="cnt-pul">0</span><span class="chev"></span></button>
+        <ul class="sub">
+          <li><button data-view="pulizie">Checklist settimana</button></li>
+          <li><button data-view="pulizie-bianc">Biancheria e cambi</button></li>
+          <li><button data-view="pulizie-ore">Storico e ore lavorate</button></li>
+          <li><button data-view="pulizie-cfg">Impostazioni</button></li>
+        </ul>
+      </li>
+
+      <li data-mod="calendario" style="--c:var(--calendario)">
+        <button class="mod"><span class="tag"></span><span class="name">Calendario</span>
+          <span class="count">12</span><span class="chev"></span></button>
+        <ul class="sub">
+          <li><button data-view="calendario">Settimana</button></li>
+          <li><button data-view="calendario-cfg">Impostazioni</button></li>
+        </ul>
+      </li>
+
+      <li data-mod="spesa" style="--c:var(--spesa)">
+        <button class="mod"><span class="tag"></span><span class="name">Lista della spesa</span>
+          <span class="count">9</span><span class="chev"></span></button>
+        <ul class="sub">
+          <li><button data-view="spesa">Lista corrente</button></li>
+          <li><button data-view="spesa-iphone">Comando rapido iPhone</button></li>
+          <li><button data-view="spesa-cfg">Impostazioni</button></li>
+        </ul>
+      </li>
+
+      <li data-mod="attivita" style="--c:var(--attivita)">
+        <button class="mod"><span class="tag"></span><span class="name">Attività programmate</span>
+          <span class="count">5</span><span class="chev"></span></button>
+        <ul class="sub">
+          <li><button data-view="attivita">Scadenze</button></li>
+          <li><button data-view="attivita-cfg">Impostazioni</button></li>
+        </ul>
+      </li>
+    </ul>
+
+    <div class="rail-foot">
+      <button id="btn-focus">Apri la vista per chi pulisce</button>
+      <button data-view="generali" class="jump">Casa e famiglia</button>
+    </div>
+  </nav>
+
+  <!-- ===================== CONTENUTO ===================== -->
+  <div class="main">
+    <header class="top">
+      <div>
+        <p class="path" id="path">Panoramica</p>
+        <h2 id="title">Oggi</h2>
+      </div>
+      <div class="actions">
+        <div class="people" aria-label="In casa">
+          <span class="av" style="background:#3D5BA9">DA</span>
+          <span class="av" style="background:#2F7D6D">VI</span>
+          <span class="av" style="background:#B9741F">AM</span>
+          <span class="av" style="background:#9C3A5E">MA</span>
+        </div>
+        <div class="today-date" id="topdate"></div>
+        <button class="btn" id="cta">Aggiungi</button>
+        <button class="btn ghost" id="btn-exit" style="display:none">Chiudi vista pulizie</button>
+      </div>
+    </header>
+
+    <div class="scroll" id="scroll">
+
+      <!-- ---------- OGGI ---------- -->
+      <section class="view on" id="v-oggi" style="--c:var(--oggi)">
+        <div class="panel alert" style="margin-bottom:18px">
+          <header>
+            <h3>Scadenze della settimana</h3>
+            <span class="meta" id="urg-meta"></span>
+          </header>
+          <ul class="rows" id="reminder"></ul>
+        </div>
+
+        <div class="stats">
+          <div class="stat" style="--c:var(--pulizie)"><b id="s-pul">0</b><span>Voci di pulizia da fare</span></div>
+          <div class="stat" style="--c:var(--calendario)"><b>4</b><span>Impegni oggi in calendario</span></div>
+          <div class="stat" style="--c:var(--spesa)"><b>9</b><span>Articoli in lista spesa</span></div>
+          <div class="stat" style="--c:var(--attivita)"><b>5</b><span>Attività programmate attive</span></div>
+        </div>
+
+        <div class="grid g-side">
+          <div class="panel tint" style="--c:var(--calendario)">
+            <header><h3>Come va la giornata</h3><span class="meta">tutta la famiglia</span></header>
+            <ul class="rows">
+              <li><span class="chip" style="--c:var(--calendario)">07:50</span>
+                <span class="t"><strong>Amelie all'asilo</strong><span>Accompagna Davide</span></span></li>
+              <li><span class="chip" style="--c:var(--pulizie)">mattina</span>
+                <span class="t"><strong>Bagno, sanitari e specchi</strong><span>Checklist settimana in corso</span></span></li>
+              <li><span class="chip" style="--c:var(--calendario)">16:00</span>
+                <span class="t"><strong>Pediatra per Maddie</strong><span>Controllo annuale</span></span></li>
+              <li><span class="chip" style="--c:var(--spesa)">17:30</span>
+                <span class="t"><strong>Passare al supermercato</strong><span>9 articoli in lista</span></span></li>
+              <li><span class="chip" style="--c:var(--attivita)">sera</span>
+                <span class="t"><strong>Raccolta plastica</strong><span>Esporre entro le 22:00</span></span></li>
+            </ul>
+          </div>
+
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel tint" style="--c:var(--pulizie)">
+              <header><h3>Ultimi cambi biancheria</h3></header>
+              <ul class="rows" id="home-bianc"></ul>
+            </div>
+            <div class="panel tint" style="--c:var(--spesa)">
+              <header><h3>Aggiunto dall'iPhone</h3><span class="meta">oggi</span></header>
+              <ul class="rows">
+                <li><span class="t"><strong>Pannolini taglia 5</strong><span>Vivien, alle 11:12</span></span></li>
+                <li><span class="t"><strong>Latte intero</strong><span>Davide, alle 09:40</span></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- PULIZIE: CHECKLIST ---------- -->
+      <section class="view" id="v-pulizie" style="--c:var(--pulizie)">
+        <div class="weekbar">
+          <button class="nav-w" id="w-prev" aria-label="Settimana precedente">‹</button>
+          <button class="nav-w" id="w-next" aria-label="Settimana successiva">›</button>
+          <div class="lbl"><b id="w-label"></b><span id="w-sub"></span></div>
+          <div class="prog" style="--c:var(--pulizie)">
+            <div class="n"><span id="w-count"></span><span id="w-pct"></span></div>
+            <div class="bar"><i id="w-bar" style="width:0%"></i></div>
+          </div>
+          <button class="btn ghost sm" id="w-today">Vai a questa settimana</button>
+        </div>
+
+        <div class="grid g-side">
+          <div class="panel tint">
+            <header><h3>Checklist della settimana</h3>
+              <span class="meta">tocca Fatto o Parziale, la data si registra da sola</span></header>
+            <div class="body flush" id="checklist"></div>
+          </div>
+
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Giorni lavorati</h3><span class="meta" id="ore-tot"></span></header>
+              <div class="body flush">
+                <table class="board">
+                  <thead><tr><th>Giorno</th><th>Orario</th><th>Ore</th></tr></thead>
+                  <tbody id="ore-body"></tbody>
+                </table>
+              </div>
+              <div class="body" style="border-top:1px solid var(--line-soft)">
+                <button class="btn ghost" style="width:100%" id="add-ore">Aggiungi giornata</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <header><h3>Note per chi pulisce</h3></header>
+              <div class="body">
+                <ul class="rows" style="margin:-16px -18px">
+                  <li><span class="t"><strong>Lenzuola nell'armadio del corridoio</strong>
+                    <span>Seconda anta, ripiano in alto</span></span></li>
+                  <li><span class="t"><strong>Non usare candeggina in cucina</strong>
+                    <span>Solo detergente neutro sul piano in legno</span></span></li>
+                  <li><span class="t"><strong>Camera di Maddie dopo le 15:00</strong>
+                    <span>Fa il riposino fino alle 14:45</span></span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- PULIZIE: BIANCHERIA ---------- -->
+      <section class="view" id="v-pulizie-bianc" style="--c:var(--pulizie)">
+        <div class="grid g-side">
+          <div class="panel tint">
+            <header><h3>Cambi biancheria</h3><span class="meta">in rosso quelli scaduti</span></header>
+            <div class="body flush">
+              <table class="board">
+                <thead><tr><th>Cosa</th><th>Ogni</th><th>Ultimo cambio</th><th>Prossimo</th><th></th></tr></thead>
+                <tbody id="bianc-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Bucato in corso</h3></header>
+              <ul class="rows">
+                <li><span class="t"><strong>Lavatrice</strong><span>Colorati 40°, finisce alle 15:20</span></span>
+                  <span class="chip" style="--c:var(--pulizie)">in corso</span></li>
+                <li><span class="t"><strong>Stendibiancheria</strong><span>Lenzuola matrimoniale</span></span>
+                  <span class="chip grey">da ritirare</span></li>
+                <li><span class="t"><strong>Da stirare</strong><span>7 capi</span></span>
+                  <span class="chip grey">in attesa</span></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <header><h3>Scorte in armadio</h3></header>
+              <div class="body">
+                <div style="display:grid;gap:14px">
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Set lenzuola matrimoniale</span><span style="color:var(--muted)">3</span></div>
+                    <div class="bar"><i style="width:75%"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Set lettini bambine</span><span style="color:var(--muted)">4</span></div>
+                    <div class="bar"><i style="width:100%"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Asciugamani viso</span><span style="color:var(--muted)">6</span></div>
+                    <div class="bar"><i style="width:60%"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Strofinacci cucina</span><span style="color:var(--muted)">2</span></div>
+                    <div class="bar"><i style="width:25%;background:var(--rosso)"></i></div></div>
+                </div>
+                <p class="hint">Quando una scorta scende sotto la soglia, l'articolo entra da solo nella lista della spesa.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- PULIZIE: ORE E STORICO ---------- -->
+      <section class="view" id="v-pulizie-ore" style="--c:var(--pulizie)">
+        <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat" style="--c:var(--pulizie)"><b>18,5</b><span>Ore lavorate a marzo</span></div>
+          <div class="stat" style="--c:var(--pulizie)"><b>6</b><span>Giornate a marzo</span></div>
+          <div class="stat" style="--c:var(--muted)"><b>92%</b><span>Checklist completate</span></div>
+        </div>
+        <div class="grid g-side">
+          <div class="panel tint">
+            <header><h3>Storico settimane</h3><span class="meta">ultime 6</span></header>
+            <div class="body flush">
+              <table class="board">
+                <thead><tr><th>Settimana</th><th>Completate</th><th>Parziali</th><th>Non fatte</th><th>Ore</th></tr></thead>
+                <tbody>
+                  <tr><td><b>9 – 15 marzo</b><span class="sm">in corso</span></td><td class="num" id="st-f">–</td><td class="num" id="st-p">–</td><td class="num" id="st-n">–</td><td class="num">3,0</td></tr>
+                  <tr><td><b>2 – 8 marzo</b></td><td class="num">15</td><td class="num">2</td><td class="num">1</td><td class="num">6,5</td></tr>
+                  <tr><td><b>23 feb – 1 mar</b></td><td class="num">17</td><td class="num">1</td><td class="num">0</td><td class="num">6,0</td></tr>
+                  <tr><td><b>16 – 22 febbraio</b></td><td class="num">14</td><td class="num">3</td><td class="num">1</td><td class="num">5,5</td></tr>
+                  <tr><td><b>9 – 15 febbraio</b></td><td class="num">18</td><td class="num">0</td><td class="num">0</td><td class="num">6,0</td></tr>
+                  <tr><td><b>2 – 8 febbraio</b></td><td class="num">16</td><td class="num">2</td><td class="num">0</td><td class="num">6,0</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <header><h3>Registro giornate</h3><span class="meta">marzo</span></header>
+            <div class="body flush">
+              <table class="board">
+                <thead><tr><th>Giorno</th><th>Orario</th><th>Ore</th></tr></thead>
+                <tbody>
+                  <tr><td>giovedì 12</td><td class="num">09:00 – 12:00</td><td class="num">3,0</td></tr>
+                  <tr><td>lunedì 9</td><td class="num">09:00 – 12:30</td><td class="num">3,5</td></tr>
+                  <tr><td>giovedì 5</td><td class="num">09:00 – 12:00</td><td class="num">3,0</td></tr>
+                  <tr><td>lunedì 2</td><td class="num">09:00 – 12:30</td><td class="num">3,5</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- PULIZIE: IMPOSTAZIONI ---------- -->
+      <section class="view" id="v-pulizie-cfg" style="--c:var(--pulizie)">
+        <div class="grid g-side">
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel tint">
+              <header><h3>Voci della checklist</h3><span class="meta" id="cfg-n"></span></header>
+              <div class="body flush" id="cfg-tasks"></div>
+              <div class="body" style="border-top:1px solid var(--line-soft)">
+                <button class="btn ghost" style="width:100%">Aggiungi una voce</button>
+                <p class="hint">Ogni voce ha una frequenza propria. Cambiando la frequenza si aggiorna anche la data della prossima scadenza.</p>
+              </div>
+            </div>
+
+            <div class="panel">
+              <header><h3>Come funziona la checklist</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>La settimana inizia</strong></span>
+                  <select><option selected>Lunedì</option><option>Domenica</option></select></li>
+                <li><span class="t"><strong>Registra la data quando spunto</strong>
+                  <span>Alla prima spunta viene salvata la data di oggi, modificabile con un tocco.</span></span>
+                  <span class="sw on"></span></li>
+                <li><span class="t"><strong>Chiedi chi ha fatto la lavorazione</strong>
+                  <span>Mostra la scelta tra le persone di casa e chi viene a pulire.</span></span>
+                  <span class="sw on"></span></li>
+                <li><span class="t"><strong>Riporta le voci non fatte</strong>
+                  <span>Restano nella settimana nuova segnalate in rosso.</span></span>
+                  <span class="sw on"></span></li>
+                <li><span class="t"><strong>Blocca le settimane passate</strong>
+                  <span>Dopo la domenica lo storico non è più modificabile.</span></span>
+                  <span class="sw"></span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Chi pulisce</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Nome</strong><span>Compare accanto a ogni spunta.</span></span>
+                  <input type="text" value="Collaboratrice" style="min-width:170px"></li>
+                <li><span class="t"><strong>Giorni di servizio</strong></span>
+                  <select><option selected>Lunedì e giovedì</option><option>Solo lunedì</option><option>Tre volte a settimana</option></select></li>
+                <li><span class="t"><strong>Orario abituale</strong></span>
+                  <input type="time" value="09:00" style="min-width:120px"></li>
+                <li><span class="t"><strong>Registra le ore lavorate</strong>
+                  <span>Tabella giorno, orario e ore, con totale mensile.</span></span>
+                  <span class="sw on"></span></li>
+                <li><span class="t"><strong>Vista semplificata</strong>
+                  <span>Solo checklist e ore, senza calendario, spesa e attività.</span></span>
+                  <span class="sw on"></span></li>
+              </ul>
+            </div>
+
+            <div class="panel">
+              <header><h3>Promemoria</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Avviso il mattino del servizio</strong><span>Alle 08:00.</span></span>
+                  <span class="sw on"></span></li>
+                <li><span class="t"><strong>Segnala le voci scadute</strong>
+                  <span>Compaiono in rosso nel riquadro scadenze della home.</span></span>
+                  <span class="sw on"></span></li>
+                <li><span class="t"><strong>Riepilogo della domenica sera</strong></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- CALENDARIO ---------- -->
+      <section class="view" id="v-calendario" style="--c:var(--calendario)">
+        <div class="panel tint" style="margin-bottom:18px">
+          <header><h3 id="cal-range">Settimana</h3>
+            <div class="seg" style="--c:var(--calendario)">
+              <button>Giorno</button><button class="on">Settimana</button><button>Mese</button></div>
+          </header>
+          <div class="body flush"><div class="week" id="calweek"></div></div>
+        </div>
+        <div class="grid g2">
+          <div class="panel">
+            <header><h3>Prossimi impegni</h3></header>
+            <ul class="rows">
+              <li><span class="t"><strong>Pediatra per Maddie</strong><span>Controllo annuale</span></span><span class="when">oggi 16:00</span></li>
+              <li><span class="t"><strong>Colloquio asilo di Amelie</strong><span>Vivien</span></span><span class="when">venerdì 17:00</span></li>
+              <li><span class="t"><strong>Cena dai nonni</strong><span>Tutta la famiglia</span></span><span class="when">sabato 20:00</span></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <header><h3>Calendari collegati</h3></header>
+            <ul class="rows">
+              <li><span class="chip" style="--c:var(--calendario)">Famiglia</span>
+                <span class="t"><strong>Casa Ferrafoni</strong><span>28 impegni</span></span></li>
+              <li><span class="chip" style="--c:var(--spesa)">Asilo</span>
+                <span class="t"><strong>Amelie e Maddie</strong><span>11 impegni</span></span></li>
+              <li><span class="chip" style="--c:var(--attivita)">Lavoro</span>
+                <span class="t"><strong>Davide</strong><span>solo occupato o libero</span></span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- CALENDARIO: IMPOSTAZIONI ---------- -->
+      <section class="view" id="v-calendario-cfg" style="--c:var(--calendario)">
+        <div class="grid g-side">
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel tint">
+              <header><h3>Calendari</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Casa Ferrafoni</strong><span>Visibile a tutti, modificabile da Davide e Vivien.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Asilo di Amelie e Maddie</strong><span>Sola lettura, si aggiorna ogni notte.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Lavoro di Davide</strong><span>Mostra le fasce occupate senza i titoli.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Festività italiane</strong><span>Giorni rossi e chiusure dell'asilo.</span></span><span class="sw"></span></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <header><h3>Cosa appare nella griglia</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Turni e checklist pulizie</strong></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Cambi biancheria</strong></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Attività programmate</strong></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Giorni di spesa</strong></span><span class="sw"></span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="panel">
+            <header><h3>Avvisi</h3></header>
+            <ul class="cfg">
+              <li><span class="t"><strong>Avvisa prima di ogni impegno</strong></span>
+                <select><option>10 minuti</option><option selected>30 minuti</option><option>1 ora</option></select></li>
+              <li><span class="t"><strong>Vista predefinita</strong></span>
+                <div class="seg" style="--c:var(--calendario)"><button>Giorno</button><button class="on">Settimana</button><button>Mese</button></div></li>
+              <li><span class="t"><strong>Riepilogo della sera</strong><span>Alle 21:00, cosa succede domani.</span></span><span class="sw on"></span></li>
+              <li><span class="t"><strong>Silenzia di notte</strong><span>Dalle 21:30 alle 07:00.</span></span><span class="sw on"></span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- SPESA ---------- -->
+      <section class="view" id="v-spesa" style="--c:var(--spesa)">
+        <div class="grid g-side">
+          <div class="panel tint">
+            <header><h3>Lista corrente</h3><span class="meta">sincronizzata con l'iPhone</span></header>
+            <div class="body flush" id="lista"></div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Aggiungi alla lista</h3></header>
+              <div class="body">
+                <div style="display:flex;gap:8px">
+                  <input type="text" placeholder="Che cosa serve?" style="flex:1;min-width:0">
+                  <button class="btn" style="background:var(--spesa)">Aggiungi</button>
+                </div>
+                <p class="section-t">Comprati spesso</p>
+                <div class="tags">
+                  <span class="tag-i add" style="border-style:solid">Latte</span>
+                  <span class="tag-i add" style="border-style:solid">Pane</span>
+                  <span class="tag-i add" style="border-style:solid">Uova</span>
+                  <span class="tag-i add" style="border-style:solid">Pannolini</span>
+                  <span class="tag-i add" style="border-style:solid">Yogurt bambine</span>
+                  <span class="tag-i add" style="border-style:solid">Strofinacci</span>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <header><h3>Dove si fa la spesa</h3></header>
+              <ul class="rows">
+                <li><span class="t"><strong>Supermercato</strong><span>lista principale</span></span>
+                  <span class="chip" style="--c:var(--spesa)">9</span></li>
+                <li><span class="t"><strong>Mercato del sabato</strong><span>frutta e verdura</span></span>
+                  <span class="chip grey">0</span></li>
+                <li><span class="t"><strong>Farmacia</strong><span></span></span><span class="chip grey">2</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- SPESA: COMANDO RAPIDO ---------- -->
+      <section class="view" id="v-spesa-iphone" style="--c:var(--spesa)">
+        <div class="grid g-side-l">
+          <div class="panel tint">
+            <header><h3>Come appare sull'iPhone</h3></header>
+            <div class="body">
+              <div class="phone">
+                <div class="bar-t"><span>21:05</span><span>Comandi</span></div>
+                <p class="q">Spesa di casa<br>Che cosa vuoi fare?</p>
+                <div class="opt"><em>👀</em> Vedi la lista</div>
+                <div class="opt p"><em>➕</em> Aggiungi qualcosa</div>
+              </div>
+              <p class="hint" style="text-align:center">Un'icona sulla schermata home dell'iPhone apre direttamente questa scelta.</p>
+            </div>
+          </div>
+
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Il percorso del comando</h3></header>
+              <div class="body">
+                <ol class="flow">
+                  <li><b>Tocchi l'icona sulla schermata home</b><span>Nessuna app da aprire, nessun accesso da fare.</span></li>
+                  <li><b>Il comando chiede: vedere o aggiungere</b><span>Due voci sole, si sceglie con un pollice.</span></li>
+                  <li><b>Detti o scrivi l'articolo</b><span>Anche più articoli di seguito, separati dalla voce.</span></li>
+                  <li><b>La lista di casa si aggiorna</b><span>L'iPad mostra il nuovo articolo entro pochi secondi.</span></li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="panel">
+              <header><h3>Sincronizzazione</h3><span class="meta">da collegare</span></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Stato</strong><span>Al momento la lista vive solo su questo dispositivo.</span></span>
+                  <span class="chip amber">Non collegata</span></li>
+                <li><span class="t"><strong>Archivio condiviso</strong>
+                  <span>Il file <code>spesa.json</code> nel repository, aggiornato dal comando rapido.</span></span>
+                  <input type="text" value="ferrafoni/home-planner" style="min-width:190px"></li>
+                <li><span class="t"><strong>Ricontrolla la lista</strong><span>Ogni quanto l'iPad rilegge l'archivio.</span></span>
+                  <select><option>15 secondi</option><option selected>30 secondi</option><option>1 minuto</option></select></li>
+                <li><span class="t"><strong>Avvisa quando arriva un articolo</strong><span>Piccolo segnale sull'iPad di casa.</span></span>
+                  <span class="sw on"></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- SPESA: IMPOSTAZIONI ---------- -->
+      <section class="view" id="v-spesa-cfg" style="--c:var(--spesa)">
+        <div class="grid g-side">
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel tint">
+              <header><h3>Reparti</h3><span class="meta">l'ordine segue il percorso in negozio</span></header>
+              <div class="body">
+                <div class="tags">
+                  <span class="tag-i"><i style="background:var(--spesa)"></i>Frutta e verdura<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--spesa)"></i>Banco freschi<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--spesa)"></i>Dispensa<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--spesa)"></i>Bambine<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--spesa)"></i>Surgelati<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--spesa)"></i>Casa e pulizia<span class="x">×</span></span>
+                  <span class="tag-i add">Aggiungi reparto</span>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <header><h3>Articoli ricorrenti</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Detersivo lavatrice</strong><span>Torna in lista ogni 4 settimane.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Pannolini taglia 5</strong><span>Torna in lista ogni 2 settimane.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Strofinacci di ricambio</strong><span>Torna in lista ogni 3 mesi.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Sacchi umido</strong><span>Torna in lista ogni mese.</span></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Come si comporta la lista</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Articoli presi</strong></span>
+                  <select><option selected>Restano in fondo</option><option>Spariscono subito</option></select></li>
+                <li><span class="t"><strong>Svuota dopo la spesa</strong><span>La lista si azzera quando segni la spesa come conclusa.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Unisci i doppioni</strong><span>Se in due aggiungete la stessa cosa resta una riga sola.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Chiedi sempre la quantità</strong></span><span class="sw"></span></li>
+                <li><span class="t"><strong>Scorte basse in lista</strong><span>Gli articoli sotto soglia entrano da soli.</span></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <header><h3>Chi può modificare</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Davide</strong><span>Aggiunge e conclude la spesa</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Vivien</strong><span>Aggiunge e conclude la spesa</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Chi pulisce</strong><span>Solo aggiunta</span></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- ATTIVITÀ ---------- -->
+      <section class="view" id="v-attivita" style="--c:var(--attivita)">
+        <div class="grid g-side">
+          <div class="panel tint">
+            <header><h3>Scadenze</h3><span class="meta">ordinate per data, in rosso quelle passate</span></header>
+            <div class="body flush">
+              <table class="board">
+                <thead><tr><th>Attività</th><th>Chi</th><th>Scade</th><th>Ricorre</th></tr></thead>
+                <tbody id="att-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Per categoria</h3></header>
+              <div class="body">
+                <div style="display:grid;gap:14px">
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Manutenzione</span><span style="color:var(--muted)">3</span></div><div class="bar"><i style="width:45%"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Bambine</span><span style="color:var(--muted)">2</span></div><div class="bar"><i style="width:30%"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Documenti</span><span style="color:var(--muted)">1</span></div><div class="bar"><i style="width:15%"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:6px">
+                    <span>Auto</span><span style="color:var(--muted)">1</span></div><div class="bar"><i style="width:15%"></i></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <header><h3>Fatte di recente</h3></header>
+              <ul class="rows">
+                <li><span class="t"><strong>Revisione estintore</strong><span>Davide</span></span><span class="when">2 marzo</span></li>
+                <li><span class="t"><strong>Vaccino Amelie</strong><span>Vivien</span></span><span class="when">24 febbraio</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- ATTIVITÀ: IMPOSTAZIONI ---------- -->
+      <section class="view" id="v-attivita-cfg" style="--c:var(--attivita)">
+        <div class="grid g-side">
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel tint">
+              <header><h3>Categorie</h3></header>
+              <div class="body">
+                <div class="tags">
+                  <span class="tag-i"><i style="background:var(--attivita)"></i>Manutenzione<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--attivita)"></i>Documenti<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--attivita)"></i>Casa<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--attivita)"></i>Auto<span class="x">×</span></span>
+                  <span class="tag-i"><i style="background:var(--attivita)"></i>Bambine<span class="x">×</span></span>
+                  <span class="tag-i add">Aggiungi categoria</span>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <header><h3>Ricorrenze</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Ricalcola dalla data di completamento</strong>
+                  <span>Se la fai con dieci giorni di ritardo, la prossima scadenza slitta di dieci giorni.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Salta i giorni festivi</strong><span>Sposta la scadenza al primo giorno feriale utile.</span></span><span class="sw"></span></li>
+                <li><span class="t"><strong>Tieni lo storico per</strong></span>
+                  <select><option>1 anno</option><option selected>3 anni</option><option>Sempre</option></select></li>
+              </ul>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Notifiche</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Primo avviso</strong></span>
+                  <select><option>3 giorni prima</option><option selected>7 giorni prima</option><option>14 giorni prima</option></select></li>
+                <li><span class="t"><strong>Secondo avviso</strong><span>Il giorno stesso, alle 09:00.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Insisti se è in ritardo</strong><span>Un avviso al giorno finché non risulta fatta.</span></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <header><h3>Riquadro scadenze in home</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Quanto guarda avanti</strong></span>
+                  <select><option>3 giorni</option><option selected>7 giorni</option><option>14 giorni</option></select></li>
+                <li><span class="t"><strong>Segna in rosso</strong></span>
+                  <select><option>Solo le scadute</option><option selected>Scadute e di oggi</option><option>Scadute, oggi e domani</option></select></li>
+                <li><span class="t"><strong>Includi le voci di pulizia</strong></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Includi i cambi biancheria</strong></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- GENERALI ---------- -->
+      <section class="view" id="v-generali" style="--c:var(--oggi)">
+        <div class="grid g-side">
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel tint">
+              <header><h3>Chi vive in casa</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Davide</strong><span>Accesso completo</span></span>
+                  <select><option selected>Adulto</option><option>Ospite</option></select></li>
+                <li><span class="t"><strong>Vivien</strong><span>Accesso completo</span></span>
+                  <select><option selected>Adulto</option><option>Ospite</option></select></li>
+                <li><span class="t"><strong>Amelie</strong><span>5 anni</span></span>
+                  <select><option selected>Bambina</option><option>Adulto</option></select></li>
+                <li><span class="t"><strong>Maddie</strong><span>3 anni</span></span>
+                  <select><option selected>Bambina</option><option>Adulto</option></select></li>
+                <li><span class="t"><strong>Collaboratrice</strong><span>Solo checklist pulizie e ore lavorate</span></span>
+                  <select><option selected>Vista pulizie</option><option>Accesso completo</option></select></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <header><h3>Dispositivo di casa</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Schermo sempre acceso</strong><span>L'iPad resta sulla home quando è in carica.</span></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Torna alla home dopo</strong></span>
+                  <select><option>2 minuti</option><option selected>5 minuti</option><option>Mai</option></select></li>
+                <li><span class="t"><strong>Testo grande</strong><span>Aumenta la dimensione dei caratteri su tutta l'app.</span></span><span class="sw"></span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="grid" style="gap:18px;align-content:start">
+            <div class="panel">
+              <header><h3>Dati e archivio</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Dove stanno i dati</strong><span>In questo momento nel browser dell'iPad.</span></span>
+                  <span class="chip amber">Locale</span></li>
+                <li><span class="t"><strong>Repository</strong></span>
+                  <input type="text" value="ferrafoni/home-planner" style="min-width:190px"></li>
+                <li><span class="t"><strong>Salvataggio automatico</strong></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Esporta tutto</strong><span>Un file con checklist, ore, spesa e attività.</span></span>
+                  <button class="btn ghost sm">Esporta</button></li>
+              </ul>
+            </div>
+            <div class="panel">
+              <header><h3>Aspetto</h3></header>
+              <ul class="cfg">
+                <li><span class="t"><strong>Prima schermata all'apertura</strong></span>
+                  <select><option selected>Oggi</option><option>Checklist pulizie</option><option>Lista della spesa</option></select></li>
+                <li><span class="t"><strong>Mostra il riquadro scadenze</strong></span><span class="sw on"></span></li>
+                <li><span class="t"><strong>Colore dei moduli</strong><span>Verde pulizie, blu calendario, ambra spesa, rosso attività.</span></span><span class="sw on"></span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ---------- modale data ---------- -->
+<div class="veil" id="veil">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <header><h3 id="sheet-t">Quando è stata fatta?</h3><p id="sheet-p"></p></header>
+    <div class="opts" id="sheet-opts"></div>
+    <div class="picker"><input type="date" id="sheet-date"><button class="btn ghost" id="sheet-set">Usa questa data</button></div>
+    <div class="who-row">
+      <p class="section-t">Chi l'ha fatta</p>
+      <div class="seg" style="--c:var(--pulizie)" id="sheet-who">
+        <button class="on">Collaboratrice</button><button>Vivien</button><button>Davide</button>
+      </div>
+    </div>
+    <footer>
+      <button class="btn ghost" id="sheet-clear">Togli la spunta</button>
+      <button class="btn" style="background:var(--pulizie)" id="sheet-close">Chiudi</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =============== persistenza tollerante =============== */
+const Store = (()=>{
+  let mem = {};
+  let ok = false;
+  try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); ok = true; }catch(e){ ok = false; }
+  return {
+    get(k,d){ try{ const v = ok ? localStorage.getItem(k) : mem[k]; return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+    set(k,v){ const s = JSON.stringify(v); try{ ok ? localStorage.setItem(k,s) : (mem[k]=s); }catch(e){ mem[k]=s; } }
+  };
+})();
+
+/* =============== date =============== */
+const GG = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+const GG3 = ['dom','lun','mar','mer','gio','ven','sab'];
+const MM = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+const OGGI = startOfDay(new Date());
+
+function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+function monday(d){ const x = startOfDay(d); const w = (x.getDay()+6)%7; return addDays(x,-w); }
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function breve(d){ return d.getDate()+' '+MM[d.getMonth()].slice(0,3); }
+function dm(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+function diff(d){ return Math.round((startOfDay(d)-OGGI)/86400000); }
+function relativa(d){
+  const n = diff(d);
+  if(n === 0) return 'oggi';
+  if(n === 1) return 'domani';
+  if(n === -1) return 'ieri';
+  if(n < 0) return n*-1+' giorni fa';
+  if(n < 7) return GG[d.getDay()];
+  return breve(d);
+}
+
+/* =============== dati =============== */
+const FREQ = {
+  giornaliera:'ogni giorno', settimanale:'ogni settimana', quindicinale:'ogni 2 settimane',
+  mensile:'ogni mese', trimestrale:'ogni 3 mesi', stagionale:'a ogni cambio stagione'
+};
+
+const AREE = [
+  {id:'bagno',   n:'Bagno',            note:'ogni settimana'},
+  {id:'cucina',  n:'Cucina',           note:'ogni settimana'},
+  {id:'camere',  n:'Camere e letti',   note:'settimanale e quindicinale'},
+  {id:'giorno',  n:'Zona giorno',      note:'ogni settimana'},
+  {id:'bianc',   n:'Biancheria',       note:'cambi programmati'},
+  {id:'fondo',   n:'Pulizie di fondo', note:'mensili e stagionali'}
+];
+
+const TASKS = [
+  {id:'t01', a:'bagno',  i:'🚿', n:'Bagno e sanitari',        f:'settimanale'},
+  {id:'t02', a:'bagno',  i:'🪞', n:'Specchi',                 f:'settimanale'},
+  {id:'t03', a:'bagno',  i:'🧴', n:'Doccia e box',            f:'settimanale'},
+  {id:'t04', a:'bagno',  i:'🧺', n:'Cambio asciugamani',      f:'settimanale'},
+  {id:'t05', a:'bagno',  i:'🧽', n:'Tappetino bagno',         f:'settimanale'},
+
+  {id:'t06', a:'cucina', i:'🍽️', n:'Cucina e superfici',      f:'settimanale'},
+  {id:'t07', a:'cucina', i:'🧻', n:'Cambio strofinacci',      f:'settimanale'},
+  {id:'t08', a:'cucina', i:'🚰', n:'Lavello e rubinetteria',  f:'settimanale'},
+  {id:'t09', a:'cucina', i:'🧊', n:'Interno frigorifero',     f:'mensile'},
+  {id:'t10', a:'cucina', i:'🔥', n:'Forno e piano cottura',   f:'mensile'},
+  {id:'t11', a:'cucina', i:'💨', n:'Filtri cappa',            f:'trimestrale'},
+
+  {id:'t12', a:'camere', i:'🛏️', n:'Cambio lenzuola e federe', f:'quindicinale'},
+  {id:'t13', a:'camere', i:'🛌', n:'Sotto i letti',            f:'quindicinale'},
+  {id:'t14', a:'camere', i:'🧸', n:'Riordino giochi bambine',  f:'settimanale'},
+  {id:'t15', a:'camere', i:'🛋️', n:'Materassi, aspirare',      f:'trimestrale'},
+
+  {id:'t16', a:'giorno', i:'✨', n:'Spolverare',              f:'settimanale'},
+  {id:'t17', a:'giorno', i:'🪑', n:'Sotto mobili e sedie',    f:'settimanale'},
+  {id:'t18', a:'giorno', i:'🧹', n:'Aspirare e lavare i pavimenti', f:'settimanale'},
+  {id:'t19', a:'giorno', i:'📐', n:'Battiscopa',              f:'quindicinale'},
+  {id:'t20', a:'giorno', i:'🛋️', n:'Divano e cuscini',        f:'quindicinale'},
+
+  {id:'t21', a:'bianc',  i:'🥼', n:'Cambio accappatoi',       f:'quindicinale'},
+  {id:'t22', a:'bianc',  i:'🍽️', n:'Tovaglie e tovaglioli',   f:'settimanale'},
+  {id:'t23', a:'bianc',  i:'🧦', n:'Bavaglini e grembiuli asilo', f:'settimanale'},
+
+  {id:'t24', a:'fondo',  i:'🪟', n:'Vetri e finestre',        f:'mensile'},
+  {id:'t25', a:'fondo',  i:'♨️', n:'Termosifoni',             f:'mensile'},
+  {id:'t26', a:'fondo',  i:'🚪', n:'Porte e maniglie',        f:'mensile'},
+  {id:'t27', a:'fondo',  i:'🧴', n:'Tende doccia e sifoni',   f:'trimestrale'},
+  {id:'t28', a:'fondo',  i:'🪟', n:'Tende di casa',           f:'stagionale'},
+  {id:'t29', a:'fondo',  i:'👕', n:'Cambio stagione armadi',  f:'stagionale'},
+  {id:'t30', a:'fondo',  i:'➕', n:'Altro',                   f:'settimanale'}
+];
+
+const BIANCHERIA = [
+  {n:'Strofinacci cucina',        ogni:7,  ultimo:-5, chi:'Vivien'},
+  {n:'Asciugamani bagno',         ogni:7,  ultimo:-8, chi:'Collaboratrice'},
+  {n:'Tappetino bagno',           ogni:7,  ultimo:-6, chi:'Collaboratrice'},
+  {n:'Lenzuola matrimoniale',     ogni:14, ultimo:-13,chi:'Collaboratrice'},
+  {n:'Lenzuola lettino Amelie',   ogni:14, ultimo:-10,chi:'Vivien'},
+  {n:'Lenzuola lettino Maddie',   ogni:14, ultimo:-16,chi:'Vivien'},
+  {n:'Accappatoi',                ogni:14, ultimo:-9, chi:'Collaboratrice'},
+  {n:'Tovaglie',                  ogni:7,  ultimo:-4, chi:'Davide'},
+  {n:'Bavaglini asilo',           ogni:7,  ultimo:-2, chi:'Vivien'},
+  {n:'Copriletto e plaid',        ogni:30, ultimo:-24,chi:'Collaboratrice'}
+];
+
+const ATTIVITA = [
+  {n:'Bollo auto',            cat:'Documenti',   chi:'Davide', g:1,   ric:'ogni anno'},
+  {n:'Manutenzione caldaia',  cat:'Manutenzione',chi:'Davide', g:-2,  ric:'ogni anno'},
+  {n:'Filtri condizionatore', cat:'Manutenzione',chi:'Davide', g:4,   ric:'ogni 6 mesi'},
+  {n:'Visita dentista Vivien',cat:'Salute',      chi:'Vivien', g:12,  ric:'ogni 6 mesi'},
+  {n:'Iscrizione asilo Maddie',cat:'Bambine',    chi:'Vivien', g:19,  ric:'ogni anno'},
+  {n:'Cambio gomme',          cat:'Auto',        chi:'Davide', g:26,  ric:'due volte l\'anno'}
+];
+
+const SPESA = [
+  {rep:'Frutta e verdura', items:[['Pomodori da sugo','1 kg','Vivien',false],['Insalata','2 buste','',false],['Banane','1 casco','Amelie',true]]},
+  {rep:'Banco freschi',    items:[['Latte intero','2 L','Davide, dall\'iPhone',false],['Yogurt bambine','6','Vivien',false]]},
+  {rep:'Bambine',          items:[['Pannolini taglia 5','1 pacco','Vivien, dall\'iPhone',false],['Salviette','2',' ',false]]},
+  {rep:'Casa e pulizia',   items:[['Detersivo lavatrice','1','ricorrente ogni 4 settimane',false],['Strofinacci nuovi','4','scorta bassa',false],['Sacchi umido','1 rotolo','',true]]}
+];
+
+const CAL = [
+  [{t:'Nuoto Amelie',o:'17:00',c:'calendario'}],
+  [{t:'Riunione condominio',o:'21:00',c:'attivita'}],
+  [{t:'Asilo, festa',o:'10:00',c:'calendario'},{t:'Spesa grande',o:'18:00',c:'spesa'}],
+  [{t:'Pediatra Maddie',o:'16:00',c:'attivita'},{t:'Servizio pulizie',o:'09:00',c:'pulizie'}],
+  [{t:'Colloquio asilo',o:'17:00',c:'calendario'}],
+  [{t:'Cena dai nonni',o:'20:00',c:'calendario'},{t:'Cambio lenzuola',o:'mattina',c:'pulizie'}],
+  [{t:'Parco con le bambine',o:'10:30',c:'calendario'}]
+];
+
+const ORE = [
+  {g:'lunedì 9',   o:'09:00 – 12:30', h:'3,5'},
+  {g:'giovedì 12', o:'09:00 – 12:00', h:'3,0'}
+];
+
+/* =============== stato =============== */
+let stato = Store.get('ferrafoni.checklist', {});
+let settimana = monday(OGGI);
+let apertoSu = null;
+
+function chiaveSettimana(){ return iso(settimana); }
+function statoSett(){ return stato[chiaveSettimana()] || (stato[chiaveSettimana()] = {}); }
+function salva(){ Store.set('ferrafoni.checklist', stato); }
+
+/* =============== testata data =============== */
+document.getElementById('topdate').innerHTML =
+  GG[OGGI.getDay()] + '<b>' + OGGI.getDate() + ' ' + MM[OGGI.getMonth()] + '</b>';
+
+/* =============== checklist =============== */
+function scadutaVoce(t){
+  const s = statoSett()[t.id];
+  if(s && s.stato === 'fatto') return false;
+  return (t.f === 'settimanale' || t.f === 'giornaliera') && diff(addDays(settimana,4)) < 0;
+}
+
+function renderChecklist(){
+  const box = document.getElementById('checklist');
+  const s = statoSett();
+  let html = '';
+  AREE.forEach(a=>{
+    const lista = TASKS.filter(t=>t.a === a.id);
+    if(!lista.length) return;
+    const fatte = lista.filter(t=>s[t.id] && s[t.id].stato === 'fatto').length;
+    html += '<div class="areahead"><b>'+a.n+'</b><span>'+fatte+' di '+lista.length+' completate</span></div>';
+    lista.forEach(t=>{
+      const v = s[t.id];
+      const cls = v && v.stato === 'fatto' ? ' fatto' : (scadutaVoce(t) ? ' scaduto' : '');
+      const stamp = v
+        ? '<b>'+dm(new Date(v.data))+'</b>'+(v.chi || '')
+        : '<span style="color:#9AA5AC">nessuna data</span>';
+      html +=
+        '<div class="task'+cls+'" data-t="'+t.id+'">'+
+          '<span class="ico">'+t.i+'</span>'+
+          '<span class="t"><strong>'+t.n+'</strong><span>'+FREQ[t.f]+'</span></span>'+
+          '<span class="stamp tap" data-open="'+t.id+'">'+stamp+'</span>'+
+          '<span class="mark">'+
+            '<button data-set="fatto" data-t="'+t.id+'" class="'+(v&&v.stato==='fatto'?'on-f':'')+'">Fatto</button>'+
+            '<button data-set="parziale" data-t="'+t.id+'" class="'+(v&&v.stato==='parziale'?'on-p':'')+'">Parziale</button>'+
+          '</span>'+
+        '</div>';
+    });
+  });
+  box.innerHTML = html;
+  aggiornaBarra();
+}
+
+function aggiornaBarra(){
+  const s = statoSett();
+  const f = TASKS.filter(t=>s[t.id] && s[t.id].stato === 'fatto').length;
+  const p = TASKS.filter(t=>s[t.id] && s[t.id].stato === 'parziale').length;
+  const pct = Math.round(f / TASKS.length * 100);
+  document.getElementById('w-count').textContent = f + ' di ' + TASKS.length + ' completate';
+  document.getElementById('w-pct').textContent = pct + '%';
+  document.getElementById('w-bar').style.width = pct + '%';
+  document.getElementById('cnt-pul').textContent = TASKS.length - f;
+  document.getElementById('s-pul').textContent = TASKS.length - f;
+  const cells = {'st-f':f,'st-p':p,'st-n':TASKS.length-f-p};
+  Object.keys(cells).forEach(k=>{ const el = document.getElementById(k); if(el) el.textContent = cells[k]; });
+}
+
+function renderSettimana(){
+  const fine = addDays(settimana,6);
+  const n = Math.floor((settimana - monday(new Date(settimana.getFullYear(),0,4))) / 604800000) + 1;
+  document.getElementById('w-label').textContent = breve(settimana) + ' – ' + breve(fine);
+  const corrente = iso(settimana) === iso(monday(OGGI));
+  document.getElementById('w-sub').textContent =
+    'Settimana ' + n + (corrente ? ' · in corso' : (settimana < OGGI ? ' · conclusa' : ' · da venire'));
+  renderChecklist();
+}
+
+/* =============== reminder scadenze =============== */
+function scadenze(){
+  const out = [];
+  BIANCHERIA.forEach(b=>{
+    const pross = addDays(OGGI, b.ultimo + b.ogni);
+    if(diff(pross) <= 7) out.push({n:b.n, sub:'Cambio biancheria, ogni '+b.ogni+' giorni', d:pross, mod:'pulizie'});
+  });
+  ATTIVITA.forEach(a=>{
+    const d = addDays(OGGI, a.g);
+    if(diff(d) <= 7) out.push({n:a.n, sub:a.cat+' · '+a.chi, d:d, mod:'attivita'});
+  });
+  const s = statoSett();
+  TASKS.filter(t=>t.f === 'settimanale').forEach(t=>{
+    if(!s[t.id] && diff(addDays(settimana,6)) <= 7 && diff(addDays(settimana,6)) >= 0 && Math.random() < 0)
+      out.push({n:t.n, sub:'Checklist pulizie', d:addDays(settimana,6), mod:'pulizie'});
+  });
+  return out.sort((x,y)=>x.d - y.d);
+}
+
+function renderReminder(){
+  const list = scadenze();
+  const ul = document.getElementById('reminder');
+  const urg = list.filter(x=>diff(x.d) <= 0).length;
+  document.getElementById('urg-meta').textContent =
+    urg ? urg + (urg === 1 ? ' voce da recuperare subito' : ' voci da recuperare subito') : 'niente in ritardo';
+  document.getElementById('cnt-urg').textContent = urg;
+  document.getElementById('cnt-urg').style.display = urg ? '' : 'none';
+  ul.innerHTML = list.map(x=>{
+    const n = diff(x.d);
+    const rosso = n <= 0;
+    return '<li class="'+(rosso?'urgente':'')+'">'+
+      '<span class="chip '+(rosso?'red':'grey')+'">'+(n<0?'in ritardo':(n===0?'oggi':'tra '+n+' g'))+'</span>'+
+      '<span class="t"><strong>'+x.n+'</strong><span>'+x.sub+'</span></span>'+
+      '<span class="when">'+relativa(x.d)+' · '+dm(x.d)+'</span></li>';
+  }).join('');
+}
+
+/* =============== biancheria =============== */
+function renderBiancheria(){
+  document.getElementById('bianc-body').innerHTML = BIANCHERIA.map(b=>{
+    const u = addDays(OGGI,b.ultimo), p = addDays(OGGI,b.ultimo+b.ogni), n = diff(p);
+    const st = n < 0 ? '<span class="chip red">in ritardo di '+(-n)+' g</span>'
+      : n === 0 ? '<span class="chip red">oggi</span>'
+      : n <= 2 ? '<span class="chip amber">tra '+n+' g</span>'
+      : '<span class="chip grey">tra '+n+' g</span>';
+    return '<tr><td><b>'+b.n+'</b><span class="sm">'+b.chi+'</span></td>'+
+      '<td>'+(b.ogni===7?'settimana':(b.ogni===14?'2 settimane':b.ogni+' giorni'))+'</td>'+
+      '<td class="num">'+dm(u)+'</td><td class="num">'+dm(p)+'</td><td>'+st+'</td></tr>';
+  }).join('');
+
+  document.getElementById('home-bianc').innerHTML = BIANCHERIA
+    .map(b=>({b:b, n:diff(addDays(OGGI,b.ultimo+b.ogni))}))
+    .sort((x,y)=>x.n - y.n).slice(0,4)
+    .map(o=>'<li class="'+(o.n<=0?'urgente':'')+'"><span class="t"><strong>'+o.b.n+'</strong>'+
+      '<span>ultimo '+dm(addDays(OGGI,o.b.ultimo))+'</span></span>'+
+      '<span class="when">'+(o.n<0?'in ritardo':(o.n===0?'oggi':'tra '+o.n+' g'))+'</span></li>').join('');
+}
+
+/* =============== attività, spesa, calendario, ore =============== */
+function renderAttivita(){
+  document.getElementById('att-body').innerHTML = ATTIVITA.map(a=>{
+    const d = addDays(OGGI,a.g), n = diff(d);
+    const chip = n < 0 ? '<span class="chip red">'+(-n)+' g in ritardo</span>'
+      : n === 0 ? '<span class="chip red">oggi</span>'
+      : n <= 7 ? '<span class="chip amber">'+relativa(d)+'</span>'
+      : dm(d);
+    return '<tr><td><b>'+a.n+'</b><span class="sm">'+a.cat+'</span></td><td>'+a.chi+'</td><td>'+chip+'</td><td>'+a.ric+'</td></tr>';
+  }).join('');
+}
+
+function renderSpesa(){
+  document.getElementById('lista').innerHTML = SPESA.map(g=>
+    '<div class="areahead"><b>'+g.rep+'</b><span>'+g.items.filter(i=>!i[3]).length+' da prendere</span></div>'+
+    g.items.map(i=>
+      '<div class="task'+(i[3]?' fatto':'')+'" style="min-height:56px">'+
+        '<span class="ico">'+(i[3]?'✓':'○')+'</span>'+
+        '<span class="t"><strong style="'+(i[3]?'text-decoration:line-through;color:#8C9AA3':'')+'">'+i[0]+'</strong>'+
+        '<span>'+(i[2]||'')+'</span></span>'+
+        '<span class="stamp">'+i[1]+'</span>'+
+      '</div>').join('')
+  ).join('');
+}
+
+function renderCalendario(){
+  const lun = monday(OGGI);
+  document.getElementById('cal-range').textContent = breve(lun)+' – '+breve(addDays(lun,6));
+  document.getElementById('calweek').innerHTML = CAL.map((ev,i)=>{
+    const d = addDays(lun,i);
+    return '<div class="day'+(iso(d)===iso(OGGI)?' today':'')+'">'+
+      '<h4>'+GG3[d.getDay()]+'<b>'+d.getDate()+'</b></h4>'+
+      ev.map(e=>'<div class="ev" style="--ec:var(--'+e.c+')"><b>'+e.t+'</b><span>'+e.o+'</span></div>').join('')+
+      '</div>';
+  }).join('');
+}
+
+function renderOre(){
+  document.getElementById('ore-body').innerHTML = ORE.map(o=>
+    '<tr><td>'+o.g+'</td><td class="num">'+o.o+'</td><td class="num">'+o.h+'</td></tr>').join('');
+  const tot = ORE.reduce((s,o)=>s+parseFloat(o.h.replace(',','.')),0);
+  document.getElementById('ore-tot').textContent = String(tot).replace('.',',')+' ore questa settimana';
+}
+
+function renderCfgTasks(){
+  document.getElementById('cfg-n').textContent = TASKS.length+' voci attive';
+  document.getElementById('cfg-tasks').innerHTML = TASKS.map(t=>
+    '<div class="task" style="min-height:58px">'+
+      '<span class="ico">'+t.i+'</span>'+
+      '<span class="t"><strong>'+t.n+'</strong><span>'+AREE.find(a=>a.id===t.a).n+'</span></span>'+
+      '<select style="min-width:172px">'+Object.keys(FREQ).map(f=>
+        '<option'+(f===t.f?' selected':'')+'>'+FREQ[f]+'</option>').join('')+'</select>'+
+      '<span class="sw on" style="--c:var(--pulizie)"></span>'+
+    '</div>').join('');
+}
+
+/* =============== modale data =============== */
+const veil = document.getElementById('veil');
+
+function apriModale(taskId){
+  apertoSu = taskId;
+  const t = TASKS.find(x=>x.id === taskId);
+  const v = statoSett()[taskId];
+  document.getElementById('sheet-t').textContent = t.n;
+  document.getElementById('sheet-p').textContent = v
+    ? 'Registrata il '+dm(new Date(v.data))+(v.chi?' da '+v.chi:'')+'. Cambia la data se serve.'
+    : 'Scegli quando è stata fatta.';
+  const opts = document.getElementById('sheet-opts');
+  opts.innerHTML =
+    ['Oggi','Ieri','Due giorni fa','Tre giorni fa'].map((l,i)=>
+      '<button data-d="'+(-i)+'">'+l+'<br><span style="font-size:12.5px;color:#6E7A83;font-weight:400">'+dm(addDays(OGGI,-i))+'</span></button>'
+    ).join('');
+  document.getElementById('sheet-date').value = iso(v ? new Date(v.data) : OGGI);
+  veil.classList.add('on');
+}
+function chiudiModale(){ veil.classList.remove('on'); apertoSu = null; }
+
+function segna(taskId, tipo, data){
+  const s = statoSett();
+  const chi = document.querySelector('#sheet-who button.on').textContent;
+  if(s[taskId] && s[taskId].stato === tipo && !data){ delete s[taskId]; }
+  else { s[taskId] = {stato:tipo, data:iso(data || OGGI), chi:chi}; }
+  salva(); renderChecklist(); renderReminder();
+}
+
+/* =============== eventi =============== */
+document.getElementById('checklist').addEventListener('click', e=>{
+  const set = e.target.closest('[data-set]');
+  if(set){ segna(set.dataset.t, set.dataset.set, null); return; }
+  const open = e.target.closest('[data-open]');
+  if(open){ apriModale(open.dataset.open); }
+});
+
+document.getElementById('sheet-opts').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b || !apertoSu) return;
+  segna(apertoSu, 'fatto', addDays(OGGI, parseInt(b.dataset.d,10)));
+  chiudiModale();
+});
+document.getElementById('sheet-set').addEventListener('click', ()=>{
+  if(!apertoSu) return;
+  const val = document.getElementById('sheet-date').value;
+  if(val) segna(apertoSu, 'fatto', new Date(val+'T00:00:00'));
+  chiudiModale();
+});
+document.getElementById('sheet-clear').addEventListener('click', ()=>{
+  if(!apertoSu) return;
+  delete statoSett()[apertoSu]; salva(); renderChecklist(); renderReminder(); chiudiModale();
+});
+document.getElementById('sheet-close').addEventListener('click', chiudiModale);
+veil.addEventListener('click', e=>{ if(e.target === veil) chiudiModale(); });
+document.getElementById('sheet-who').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#sheet-who button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+});
+
+document.getElementById('w-prev').addEventListener('click', ()=>{ settimana = addDays(settimana,-7); renderSettimana(); });
+document.getElementById('w-next').addEventListener('click', ()=>{ settimana = addDays(settimana,7); renderSettimana(); });
+document.getElementById('w-today').addEventListener('click', ()=>{ settimana = monday(OGGI); renderSettimana(); });
+document.getElementById('add-ore').addEventListener('click', ()=>{
+  ORE.push({g:GG[OGGI.getDay()]+' '+OGGI.getDate(), o:'09:00 – 12:00', h:'3,0'}); renderOre();
+});
+
+/* =============== navigazione =============== */
+const META = {
+  'oggi':          {mod:'oggi',      path:'Panoramica',                    title:'Oggi',                    cta:'Aggiungi'},
+  'pulizie':       {mod:'pulizie',   path:'Pulizie',                       title:'Checklist settimana',     cta:'Nuova voce'},
+  'pulizie-bianc': {mod:'pulizie',   path:'Pulizie',                       title:'Biancheria e cambi',      cta:'Registra un cambio'},
+  'pulizie-ore':   {mod:'pulizie',   path:'Pulizie',                       title:'Storico e ore lavorate',  cta:'Aggiungi giornata'},
+  'pulizie-cfg':   {mod:'pulizie',   path:'Pulizie · impostazioni',        title:'Impostazioni pulizie',    cta:'Salva'},
+  'calendario':    {mod:'calendario',path:'Calendario',                    title:'Settimana',               cta:'Nuovo impegno'},
+  'calendario-cfg':{mod:'calendario',path:'Calendario · impostazioni',     title:'Impostazioni calendario', cta:'Salva'},
+  'spesa':         {mod:'spesa',     path:'Lista della spesa',             title:'Lista corrente',          cta:'Aggiungi articolo'},
+  'spesa-iphone':  {mod:'spesa',     path:'Lista della spesa',             title:'Comando rapido iPhone',   cta:'Prova il comando'},
+  'spesa-cfg':     {mod:'spesa',     path:'Lista della spesa · impostazioni',title:'Impostazioni spesa',    cta:'Salva'},
+  'attivita':      {mod:'attivita',  path:'Attività programmate',          title:'Scadenze',                cta:'Nuova attività'},
+  'attivita-cfg':  {mod:'attivita',  path:'Attività · impostazioni',       title:'Impostazioni attività',   cta:'Salva'},
+  'generali':      {mod:'oggi',      path:'Impostazioni',                  title:'Casa e famiglia',         cta:'Salva'}
+};
+const COLOR = {oggi:'var(--oggi)',pulizie:'var(--pulizie)',calendario:'var(--calendario)',spesa:'var(--spesa)',attivita:'var(--attivita)'};
+const items = [...document.querySelectorAll('.nav > li')];
+
+function show(view){
+  const m = META[view]; if(!m) return;
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on', v.id === 'v-'+view));
+  document.getElementById('path').textContent = m.path;
+  document.getElementById('title').textContent = m.title;
+  document.getElementById('cta').textContent = m.cta;
+  document.documentElement.style.setProperty('--accent', COLOR[m.mod]);
+  document.getElementById('cta').style.background = COLOR[m.mod];
+  items.forEach(li=>li.classList.toggle('active', li.dataset.mod === m.mod));
+  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on', b.dataset.view === view));
+  document.getElementById('scroll').scrollTop = 0;
+}
+
+document.querySelectorAll('.nav > li > .mod').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const li = btn.parentElement;
+    if(btn.dataset.view){ show(btn.dataset.view); return; }
+    const era = li.classList.contains('open');
+    items.forEach(x=>{ if(x !== li) x.classList.remove('open'); });
+    li.classList.toggle('open', !era);
+    if(!era){ const f = li.querySelector('.sub button'); if(f) show(f.dataset.view); }
+  });
+});
+document.querySelectorAll('.sub button, .jump').forEach(b=>{
+  b.addEventListener('click', ()=>show(b.dataset.view));
+});
+
+document.getElementById('btn-focus').addEventListener('click', ()=>{
+  document.getElementById('app').classList.add('focus');
+  document.getElementById('btn-exit').style.display = '';
+  document.getElementById('cta').style.display = 'none';
+  show('pulizie');
+});
+document.getElementById('btn-exit').addEventListener('click', ()=>{
+  document.getElementById('app').classList.remove('focus');
+  document.getElementById('btn-exit').style.display = 'none';
+  document.getElementById('cta').style.display = '';
+});
+
+document.addEventListener('click', e=>{
+  const sw = e.target.closest('.sw'); if(sw) sw.classList.toggle('on');
+  const sg = e.target.closest('.seg button');
+  if(sg && !sg.closest('#sheet-who')){
+    sg.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    sg.classList.add('on');
+  }
+});
+
+/* =============== avvio =============== */
+renderSettimana();
+renderReminder();
+renderBiancheria();
+renderAttivita();
+renderSpesa();
+renderCalendario();
+renderOre();
+renderCfgTasks();
+show('oggi');
+})();
+</script>
+</body>
+</html>
