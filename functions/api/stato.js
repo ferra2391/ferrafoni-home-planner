@@ -12,7 +12,7 @@ export async function onRequestGet({ request, env }) {
   const [
     persone, moduli, categorie, impostazioni,
     voci, spunte, ore, biancheria,
-    spesa, ricorrenti, attivita, eventi
+    spesa, ricorrenti, attivita, eventi, registro
   ] = await Promise.all([
     q('SELECT * FROM persone WHERE attiva = 1 ORDER BY ordine'),
     q('SELECT * FROM moduli WHERE attivo = 1 ORDER BY ordine'),
@@ -25,7 +25,9 @@ export async function onRequestGet({ request, env }) {
     q('SELECT * FROM spesa_articoli ORDER BY stato, id'),
     q('SELECT * FROM spesa_ricorrenti WHERE attivo = 1'),
     q('SELECT * FROM attivita WHERE attiva = 1 ORDER BY scadenza'),
-    q("SELECT * FROM eventi WHERE inizio >= date('now','-14 day') ORDER BY inizio")
+    q("SELECT * FROM eventi WHERE inizio >= date('now','-14 day') ORDER BY inizio"),
+    q(`SELECT r.*, p.nome AS persona_nome FROM registro r
+       LEFT JOIN persone p ON p.id = r.persona_id ORDER BY r.creato_il DESC LIMIT 60`)
   ]);
 
   return ok({
@@ -39,6 +41,7 @@ export async function onRequestGet({ request, env }) {
     biancheria: biancheria.results,
     spesa: { articoli: spesa.results, ricorrenti: ricorrenti.results },
     attivita: attivita.results,
-    eventi: eventi.results
+    eventi: eventi.results,
+    registro: registro.results
   });
 }

@@ -139,3 +139,90 @@ export function aggiungiArticoloLocale(nome, quantita, categoriaId){
   });
   avvisa();
 }
+
+/* ---------- registro ---------- */
+export const registro = (modulo) =>
+  (S.dati?.registro || []).filter(r => !modulo || r.modulo === modulo);
+
+export function aggiungiRegistroLocale(modulo, azione, dettaglio, personaId){
+  if (!S.dati.registro) S.dati.registro = [];
+  S.dati.registro.unshift({
+    modulo, azione, dettaglio, persona_id: personaId,
+    persona_nome: nomePersona(personaId), creato_il: new Date().toISOString()
+  });
+  avvisa();
+}
+
+/* ---------- categorie: creazione, modifica, eliminazione locale ---------- */
+export function aggiungiCategoriaLocale(cat){
+  S.dati.categorie.push(cat); avvisa();
+}
+export function modificaCategoriaLocale(id, campi){
+  const c = S.dati.categorie.find(x => x.id === id);
+  if (c) { Object.assign(c, campi); avvisa(); }
+}
+export function rimuoviCategoriaLocale(id){
+  S.dati.categorie = S.dati.categorie.filter(c => c.id !== id); avvisa();
+}
+
+/* ---------- persone ---------- */
+export function aggiungiPersonaLocale(p){ S.dati.persone.push(p); avvisa(); }
+export function modificaPersonaLocale(id, campi){
+  const p = persona(id);
+  if (p) { Object.assign(p, campi); avvisa(); }
+}
+
+/* ---------- voci pulizie ---------- */
+export function aggiungiVoceLocale(v){ S.dati.pulizie.voci.push(v); avvisa(); }
+export function modificaVoceLocale(id, campi){
+  const v = S.dati.pulizie.voci.find(x => x.id === id);
+  if (v) { Object.assign(v, campi); avvisa(); }
+}
+export function rimuoviVoceLocale(id){
+  S.dati.pulizie.voci = S.dati.pulizie.voci.filter(v => v.id !== id); avvisa();
+}
+
+/* ---------- biancheria: config ---------- */
+export function aggiungiBiancheriaLocale(b){ S.dati.biancheria.push(b); avvisa(); }
+export function modificaBiancheriaLocale(id, campi){
+  const b = S.dati.biancheria.find(x => x.id === id);
+  if (b) { Object.assign(b, campi); avvisa(); }
+}
+export function rimuoviBiancheriaLocale(id){
+  S.dati.biancheria = S.dati.biancheria.filter(b => b.id !== id); avvisa();
+}
+
+/* ---------- ore lavorate: modifica e cancellazione righe storiche ---------- */
+export function modificaOreLocale(id, campi){
+  const o = S.dati.pulizie.ore.find(x => String(x.id) === String(id));
+  if (o) { Object.assign(o, campi); avvisa(); }
+}
+export function rimuoviOreLocale(id){
+  S.dati.pulizie.ore = S.dati.pulizie.ore.filter(o => String(o.id) !== String(id)); avvisa();
+}
+
+/* ---------- attività ---------- */
+export function aggiungiAttivitaLocale(a){ S.dati.attivita.push(a); avvisa(); }
+export function modificaAttivitaLocale(id, campi){
+  const a = S.dati.attivita.find(x => x.id === id);
+  if (a) { Object.assign(a, campi); avvisa(); }
+}
+export function rimuoviAttivitaLocale(id){
+  S.dati.attivita = S.dati.attivita.filter(a => a.id !== id); avvisa();
+}
+
+/* ---------- eventi ---------- */
+export function aggiungiEventoLocale(e){ S.dati.eventi.push(e); avvisa(); }
+export function modificaEventoLocale(id, campi){
+  const e = S.dati.eventi.find(x => x.id === id);
+  if (e) { Object.assign(e, campi); avvisa(); }
+}
+export function rimuoviEventoLocale(id){
+  S.dati.eventi = S.dati.eventi.filter(e => e.id !== id); avvisa();
+}
+
+/* ---------- spesa ricorrenti ---------- */
+export function aggiungiRicorrenteLocale(r){ S.dati.spesa.ricorrenti.push(r); avvisa(); }
+export function rimuoviRicorrenteLocale(id){
+  S.dati.spesa.ricorrenti = S.dati.spesa.ricorrenti.filter(r => r.id !== id); avvisa();
+}

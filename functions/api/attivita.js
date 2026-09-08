@@ -1,25 +1,27 @@
 import { ok, errore, corpo, oggi, idBreve } from './_utils.js';
 
-// GET /api/attivita
 export async function onRequestGet({ env }) {
   const r = await env.DB.prepare('SELECT * FROM attivita WHERE attiva = 1 ORDER BY scadenza').all();
   return ok({ attivita: r.results });
 }
 
-// POST /api/attivita  → nuova attività
+// POST /api/attivita  → nuova attività, con categoria, persona, scadenza e ricorrenza
 export async function onRequestPost({ env, request }) {
   const d = await corpo(request);
   if (!d.nome) return errore('Manca il nome.');
+  if (!d.categoria_id) return errore('Manca la categoria.');
+  if (!d.scadenza) return errore('Manca la data di scadenza.');
   const id = d.id || idBreve('a');
   await env.DB.prepare(
     `INSERT INTO attivita (id, nome, categoria_id, persona_id, scadenza, ricorrenza_giorni, note)
      VALUES (?,?,?,?,?,?,?)`
-  ).bind(id, d.nome, d.categoria_id || null, d.persona_id || null,
-         d.scadenza || null, d.ricorrenza_giorni || null, d.note || null).run();
+  ).bind(id, d.nome, d.categoria_id, d.persona_id || null,
+         d.scadenza, d.ricorrenza_giorni || null, d.note || null).run();
   return ok({ id }, 201);
 }
 
 // PATCH /api/attivita  { id, fatta: true } → sposta in avanti la scadenza
+// PATCH /api/attivita  { id, nome/categoria_id/persona_id/scadenza/... } → modifica i parametri
 export async function onRequestPatch({ env, request }) {
   const d = await corpo(request);
   if (!d.id) return errore('Manca id.');
@@ -47,4 +49,12 @@ export async function onRequestPatch({ env, request }) {
   valori.push(d.id);
   await env.DB.prepare(`UPDATE attivita SET ${campi.join(', ')} WHERE id = ?`).bind(...valori).run();
   return ok({ aggiornata: d.id });
+}
+
+// DELETE /api/attivita?id=a01
+export async function onRequestDelete({ env, request }) {
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) return errore('Manca id.');
+  await env.DB.prepare('UPDATE attivita SET attiva = 0 WHERE id = ?').bind(id).run();
+  return ok({ disattivata: id });
 }

@@ -1,7 +1,7 @@
 // Pezzi di interfaccia riusati da tutti i moduli.
 // Ogni funzione restituisce una stringa HTML: i moduli compongono, non manipolano.
 
-import { esc, gm, $ } from './util.js';
+import { esc, gm, $, $$ } from './util.js';
 
 export const riq = (titolo, corpo, opzioni = {}) => `
   <section class="riq ${opzioni.classe || ''}" ${opzioni.colore ? `style="--c:${opzioni.colore}"` : ''}>
@@ -76,6 +76,58 @@ export function modaleData({ titolo, sottotitolo, persone = [], personaScelta, m
 export function chiudiModale(risposta = null){
   $('#velo').classList.remove('on');
   if (risolvi) { risolvi(risposta); risolvi = null; }
+}
+
+/* ---------- modulo generico di modifica ---------- */
+// Un solo modale per creare o modificare qualunque record: persone, categorie,
+// voci di checklist, biancheria, attività, eventi, articoli ricorrenti.
+// I campi sono descritti da uno schema, non c'è un modale diverso per ognuno.
+
+let risolviForm = null;
+
+function campoHtml(c, valori){
+  const v = valori[c.nome] ?? c.difetto ?? '';
+  if (c.tipo === 'select') {
+    return `<select data-campo="${c.nome}" ${c.richiesto ? 'required' : ''}>
+      ${c.opzioni.map(o => `<option value="${o.id}" ${String(o.id) === String(v) ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}
+    </select>`;
+  }
+  if (c.tipo === 'numero') return `<input type="number" data-campo="${c.nome}" value="${esc(v)}" min="${c.min ?? ''}" step="${c.step || 1}">`;
+  if (c.tipo === 'data')   return `<input type="date" data-campo="${c.nome}" value="${esc(v)}">`;
+  return `<input type="text" data-campo="${c.nome}" value="${esc(v)}" placeholder="${esc(c.placeholder||'')}">`;
+}
+
+export function modaleForm({ titolo, sottotitolo, campi, valori = {}, colore = 'var(--home)', permettiElimina = false }){
+  const velo = $('#velo2');
+  $('#foglio2-titolo').textContent = titolo;
+  $('#foglio2-sotto').textContent = sottotitolo || '';
+  $('#foglio2-campi').innerHTML = campi.map(c => `
+    <div class="campo-riga">
+      <label>${esc(c.etichetta)}${c.richiesto ? ' *' : ''}</label>
+      ${campoHtml(c, valori)}
+    </div>`).join('');
+  $('#foglio2-conferma').style.background = colore;
+  $('#foglio2-elimina').style.display = permettiElimina ? '' : 'none';
+  velo.classList.add('on');
+  return new Promise(res => { risolviForm = res; });
+}
+
+export function chiudiModaleForm(risultato = null){
+  $('#velo2').classList.remove('on');
+  if (risolviForm) { risolviForm(risultato); risolviForm = null; }
+}
+
+function leggiForm(){
+  const dati = {};
+  $$('#foglio2-campi [data-campo]').forEach(el => { dati[el.dataset.campo] = el.value; });
+  return dati;
+}
+
+export function agganciaModaleForm(){
+  $('#foglio2-conferma').addEventListener('click', () => chiudiModaleForm({ azione: 'salva', valori: leggiForm() }));
+  $('#foglio2-elimina').addEventListener('click', () => chiudiModaleForm({ azione: 'elimina' }));
+  $('#foglio2-annulla').addEventListener('click', () => chiudiModaleForm(null));
+  $('#velo2').addEventListener('click', e => { if (e.target.id === 'velo2') chiudiModaleForm(null); });
 }
 
 export function agganciaModale(){

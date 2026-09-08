@@ -244,3 +244,24 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 .avviso.on{transform:translateX(-50%) translateY(0)}
 
 .vuoto{padding:34px 18px;text-align:center;color:var(--tenue);font-size:.88rem}
+
+/* ---------- modale generico di modifica ---------- */
+.campi-form{padding:6px 24px 20px;display:grid;gap:14px;max-height:60vh;overflow-y:auto}
+.campo-riga{display:grid;gap:7px}
+.campo-riga label{font-size:.82rem;color:var(--tenue);font-weight:500}
+.campo-riga select,.campo-riga input{width:100%}
+
+/* ---------- registro ---------- */
+.log-riga{display:flex;align-items:center;gap:13px;padding:12px 18px;border-bottom:1px solid var(--linea-tenue)}
+.log-riga:last-child{border-bottom:0}
+.log-punto{width:9px;height:9px;border-radius:50%;background:var(--c,var(--tenue));flex:none}
+.log-riga .tx{flex:1;min-width:0}
+.log-riga .tx strong{font-weight:500;font-size:.92rem}
+.log-riga .tx span{display:block;font-size:.79rem;color:var(--tenue);margin-top:1px}
+.log-riga .qd{font-size:.78rem;color:var(--tenue);white-space:nowrap;text-align:right}
+
+/* ---------- pulsanti riga con azioni ---------- */
+.riga-azioni{display:flex;gap:8px;flex:none}
+.riga-azioni button{width:38px;height:38px;border-radius:9px;border:1px solid var(--linea);
+  background:#fff;font-size:.95rem;color:var(--tenue)}
+.riga-azioni button:hover{background:#F5F2EA;color:var(--testo)}

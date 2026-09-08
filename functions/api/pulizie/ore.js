@@ -1,25 +1,57 @@
 import { ok, errore, corpo, oggi } from '../_utils.js';
 
+function calcolaOre(inizio, fine) {
+  const m = t => parseInt(t.slice(0,2),10)*60 + parseInt(t.slice(3,5),10);
+  return Math.round((m(fine) - m(inizio)) / 6) / 10;
+}
+
 // GET /api/pulizie/ore?dal=AAAA-MM-GG
 export async function onRequestGet({ env, request }) {
   const dal = new URL(request.url).searchParams.get('dal') || '2000-01-01';
-  const r = await env.DB.prepare('SELECT * FROM ore_lavorate WHERE data >= ? ORDER BY data DESC').bind(dal).all();
+  const r = await env.DB.prepare(
+    `SELECT o.*, p.nome AS persona_nome FROM ore_lavorate o
+     LEFT JOIN persone p ON p.id = o.persona_id
+     WHERE o.data >= ? ORDER BY o.data DESC`
+  ).bind(dal).all();
   const totale = r.results.reduce((s, o) => s + (o.ore || 0), 0);
   return ok({ giornate: r.results, totale });
 }
 
-// POST /api/pulizie/ore  { data, ora_inizio, ora_fine, persona_id }
+// POST /api/pulizie/ore  { data, ora_inizio, ora_fine, persona_id }  → nuova giornata
 export async function onRequestPost({ env, request }) {
   const d = await corpo(request);
   const data = d.data || oggi();
   let ore = d.ore;
-  if (ore === undefined && d.ora_inizio && d.ora_fine) {
-    const m = t => parseInt(t.slice(0,2),10)*60 + parseInt(t.slice(3,5),10);
-    ore = Math.round((m(d.ora_fine) - m(d.ora_inizio)) / 6) / 10;
-  }
+  if (ore === undefined && d.ora_inizio && d.ora_fine) ore = calcolaOre(d.ora_inizio, d.ora_fine);
   if (!ore || ore <= 0) return errore('Ore non valide.');
   const r = await env.DB.prepare(
     'INSERT INTO ore_lavorate (persona_id, data, ora_inizio, ora_fine, ore, nota) VALUES (?,?,?,?,?,?) RETURNING id'
-  ).bind(d.persona_id || 'collab', data, d.ora_inizio || null, d.ora_fine || null, ore, d.nota || null).first();
+  ).bind(d.persona_id || null, data, d.ora_inizio || null, d.ora_fine || null, ore, d.nota || null).first();
   return ok({ id: r.id, data, ore }, 201);
+}
+
+// PATCH /api/pulizie/ore  { id, data, ora_inizio, ora_fine, persona_id, ore }  → corregge una giornata già registrata
+export async function onRequestPatch({ env, request }) {
+  const d = await corpo(request);
+  if (!d.id) return errore('Manca id.');
+  let ore = d.ore;
+  if (ore === undefined && d.ora_inizio && d.ora_fine) ore = calcolaOre(d.ora_inizio, d.ora_fine);
+
+  const campi = [], valori = [];
+  ['data', 'ora_inizio', 'ora_fine', 'persona_id', 'nota'].forEach(c => {
+    if (d[c] !== undefined) { campi.push(c + ' = ?'); valori.push(d[c]); }
+  });
+  if (ore !== undefined) { campi.push('ore = ?'); valori.push(ore); }
+  if (!campi.length) return errore('Niente da aggiornare.');
+  valori.push(d.id);
+  await env.DB.prepare(`UPDATE ore_lavorate SET ${campi.join(', ')} WHERE id = ?`).bind(...valori).run();
+  return ok({ aggiornata: d.id });
+}
+
+// DELETE /api/pulizie/ore?id=12
+export async function onRequestDelete({ env, request }) {
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) return errore('Manca id.');
+  await env.DB.prepare('DELETE FROM ore_lavorate WHERE id = ?').bind(id).run();
+  return ok({ rimossa: id });
 }

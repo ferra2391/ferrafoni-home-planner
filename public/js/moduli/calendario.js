@@ -1,8 +1,9 @@
 // Modulo calendario: settimana a sette colonne, con dentro anche
 // i turni delle pulizie e i cambi biancheria se attivati.
 
-import { esc, GG3, piu, iso, lunedi, OGGI, breve } from '../util.js';
-import { riq, rigaCfg, interruttore } from '../ui.js';
+import { esc, GG3, piu, iso, lunedi, OGGI, breve, avviso } from '../util.js';
+import { riq, rigaCfg, interruttore, modaleForm } from '../ui.js';
+import { api, prova } from '../api.js';
 import * as S from '../stato.js';
 
 const COLORE = 'var(--calendario)';
@@ -47,7 +48,8 @@ function vistaSettimana(){
           <span>${esc(S.nomePersona(e.persona_id) || e.calendario)}</span></span>
           <span class="qd">${esc(new Date(e.inizio).toLocaleDateString('it-IT',{weekday:'short',day:'numeric'}))}
           ${esc(e.inizio.slice(11,16))}</span></li>`).join('')}
-      </ul>`)}
+      </ul>` + `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
+        <button class="btn chiaro pieno" data-nuovo-evento>Nuovo impegno</button></div>`)}
       ${riq('Calendari collegati', `<ul class="righe" style="margin:-16px -18px">
         ${['famiglia','asilo','lavoro'].map(c => `<li>
           <span class="pill" style="--c:${TINTE[c]}">${esc(c)}</span>
@@ -90,5 +92,33 @@ export default {
   sezioni: [{ id:'settimana', nome:'Settimana' }, { id:'impostazioni', nome:'Impostazioni' }],
   distintivo(){ return { n: S.eventiDelGiorno().length, caldo: false }; },
   render(sezione){ return sezione === 'impostazioni' ? vistaImpostazioni() : vistaSettimana(); },
-  aggancia(){}
+  aggancia(root){
+    root.addEventListener('click', async e => {
+      if (!e.target.closest('[data-nuovo-evento]')) return;
+
+      const opzCal = [{ id:'famiglia', nome:'Famiglia' }, { id:'asilo', nome:'Asilo' }, { id:'lavoro', nome:'Lavoro' }];
+      const opzPersone = [{ id:'', nome:'Tutta la famiglia' }, ...S.S.dati.persone.map(p => ({ id:p.id, nome:p.nome }))];
+
+      const r = await modaleForm({
+        titolo: 'Nuovo impegno', colore: COLORE,
+        valori: { data: iso(OGGI), ora:'09:00' },
+        campi: [
+          { nome:'titolo', etichetta:'Che cosa', richiesto:true, placeholder:'Es. Visita dal pediatra' },
+          { nome:'calendario', etichetta:'Calendario', tipo:'select', opzioni: opzCal },
+          { nome:'persona_id', etichetta:'Per chi', tipo:'select', opzioni: opzPersone },
+          { nome:'data', etichetta:'Giorno', tipo:'data', richiesto:true },
+          { nome:'ora', etichetta:'Ora (es. 16:00)' },
+          { nome:'luogo', etichetta:'Luogo', placeholder:'Facoltativo' }
+        ]
+      });
+      if (r?.azione === 'salva' && r.valori.titolo && r.valori.data) {
+        const inizio = r.valori.data + 'T' + (r.valori.ora || '09:00');
+        const evento = { id:'loc'+Date.now(), titolo:r.valori.titolo, calendario:r.valori.calendario,
+                          persona_id:r.valori.persona_id || null, luogo:r.valori.luogo || null, inizio };
+        S.aggiungiEventoLocale(evento);
+        prova(api.creaEvento({ ...evento }));
+        avviso('Impegno aggiunto');
+      }
+    });
+  }
 };

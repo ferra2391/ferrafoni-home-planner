@@ -3,7 +3,7 @@
 
 import { esc, gm, breve, iso, piu, lunedi, OGGI, scarto, plurale, avviso } from '../util.js';
 import { riq, tabella, anello, barra, interruttore, rigaCfg, vuoto } from '../ui.js';
-import { modaleData } from '../ui.js';
+import { modaleData, modaleForm } from '../ui.js';
 import { api, prova } from '../api.js';
 import * as S from '../stato.js';
 
@@ -126,13 +126,21 @@ function vistaBiancheria(){
       <td>${b.ogni_giorni === 7 ? 'settimana' : b.ogni_giorni === 14 ? '2 settimane' : b.ogni_giorni + ' giorni'}</td>
       <td class="num">${gm(b.ultimo_cambio)}</td>
       <td><span class="pill ${b.etichetta.classe}">${esc(b.etichetta.testo)}</span></td>
-      <td style="text-align:right"><button class="btn piccolo" style="background:var(--pulizie)" data-cambio="${b.id}">Cambiato</button></td>
+      <td style="text-align:right">
+        <div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
+          <button class="btn piccolo" style="background:var(--pulizie)" data-cambio="${b.id}">Cambiato</button>
+          <button data-storico="${b.id}" title="Storico">🕐</button>
+          <button data-mod-bianc="${b.id}" title="Modifica">✎</button>
+        </div>
+      </td>
     </tr>`);
 
   const scorte = lista.filter(b => b.scorta <= b.scorta_minima);
 
   return `<div class="griglia g-lato">
-    ${riq('Cambi biancheria', tabella(['Cosa', 'Ogni', 'Ultimo cambio', 'Stato', ''], righe),
+    ${riq('Cambi biancheria', tabella(['Cosa', 'Ogni', 'Ultimo cambio', 'Stato', ''], righe) +
+        `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
+           <button class="btn chiaro pieno" data-nuovo-bianc>Aggiungi articolo</button></div>`,
       { raso: true, classe: 'tinta', colore: COLORE, meta: 'in rosso quelli da fare adesso' })}
     <div class="griglia" style="align-content:start">
       ${riq('Scorte in armadio', lista.slice(0, 6).map(b => `
@@ -143,8 +151,21 @@ function vistaBiancheria(){
                   b.scorta <= b.scorta_minima ? 'var(--rosso)' : COLORE)}
         </div>`).join('') +
         (scorte.length ? `<p class="nota">${plurale(scorte.length, 'articolo è', 'articoli sono')} sotto scorta e ${scorte.length === 1 ? 'entra' : 'entrano'} da solo in lista della spesa.</p>` : ''))}
+      <div id="storico-bianc"></div>
     </div>
   </div>`;
+}
+
+function vistaStoricoBiancheria(b, cambi){
+  return riq('Storico · ' + b.nome, cambi.length
+    ? cambi.map(c => `
+      <div class="log-riga">
+        <span class="log-punto" style="--c:var(--pulizie)"></span>
+        <span class="tx"><strong>${gm(c.data)}</strong><span>${esc(c.persona_nome || 'senza nome')}</span></span>
+        <button data-elimina-cambio="${c.id}" style="color:var(--rosso);font-size:.85rem">Togli</button>
+      </div>`).join('')
+    : vuoto('Nessun cambio registrato ancora'),
+    { raso: true, classe: 'tinta', colore: COLORE });
 }
 
 /* ---------- ore e storico ---------- */
@@ -155,13 +176,17 @@ function vistaOre(){
   const totMese = mese.reduce((s, o) => s + o.ore, 0);
 
   return `<div class="griglia g-lato">
-    ${riq('Registro giornate', tabella(['Giorno', 'Orario', 'Ore', 'Chi'],
+    ${riq('Registro giornate', tabella(['Giorno', 'Orario', 'Ore', 'Chi', ''],
       ore.map(o => `<tr>
         <td>${esc(new Date(o.data).toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long' }))}</td>
         <td class="num">${esc(o.ora_inizio || '')} – ${esc(o.ora_fine || '')}</td>
         <td class="num">${String(o.ore).replace('.', ',')}</td>
-        <td>${esc(S.nomePersona(o.persona_id))}</td></tr>`)),
-      { raso: true, classe: 'tinta', colore: COLORE, meta: 'ultimi due mesi' })}
+        <td>${esc(S.nomePersona(o.persona_id))}</td>
+        <td style="text-align:right"><div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
+          <button data-mod-ore="${o.id}" title="Modifica">✎</button>
+          <button data-elimina-ore="${o.id}" title="Elimina" style="color:var(--rosso)">🗑</button>
+        </div></td></tr>`)),
+      { raso: true, classe: 'tinta', colore: COLORE, meta: 'ultimi due mesi, anche passati si possono correggere' })}
     <div class="griglia" style="align-content:start">
       ${riq('Questo mese', `
         <div style="display:flex;align-items:center;gap:18px">
@@ -192,15 +217,16 @@ function vistaImpostazioni(){
           <div class="elenco"><div>${voci.filter(v => v.categoria_id === c.id).map(v => `
             <div class="compito" style="min-height:64px">
               <span class="emj">${v.icona}</span>
-              <span class="tx"><strong>${esc(v.nome)}</strong></span>
-              <select data-freq="${v.id}">${Object.entries(FREQ).map(([k, t]) =>
-                `<option value="${k}" ${k === v.frequenza ? 'selected' : ''}>${t}</option>`).join('')}</select>
-              ${interruttore(true, COLORE)}
+              <span class="tx"><strong>${esc(v.nome)}</strong><span>${FREQ[v.frequenza]}</span></span>
+              <div class="riga-azioni">
+                <button data-mod-voce="${v.id}" title="Modifica">✎</button>
+                <button data-elimina-voce="${v.id}" title="Togli dalla checklist" style="color:var(--rosso)">🗑</button>
+              </div>
             </div>`).join('')}</div></div>
         </div>`).join('') +
         `<div style="padding:16px 18px;border-top:1px solid var(--linea-tenue)">
-           <button class="btn chiaro pieno">Aggiungi una voce</button>
-           <p class="nota">Ogni voce ha la sua frequenza. Cambiandola si aggiorna anche la prossima scadenza in home.</p>
+           <button class="btn chiaro pieno" data-nuova-voce>Aggiungi una voce</button>
+           <p class="nota">Ogni voce ha la sua frequenza e la sua categoria. Cambiandole si aggiorna anche la prossima scadenza in home.</p>
          </div>`,
         { raso: true, classe: 'tinta', colore: COLORE, meta: voci.length + ' voci attive' })}
 
@@ -283,7 +309,9 @@ export default {
           prova(api.togliSpunta(voce, S.S.settimana));
         } else {
           const chi = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice')?.id || 'vivien';
+          const nomeVoce = S.S.dati.pulizie.voci.find(v => v.id === voce)?.nome || voce;
           S.applicaSpunta(voce, tipo, OGGI, chi);
+          S.aggiungiRegistroLocale('pulizie', tipo, nomeVoce, chi);
           prova(api.spuntaPulizia({ voce_id: voce, settimana: S.S.settimana, stato: tipo,
                                     data: iso(OGGI), persona_id: chi }));
           avviso(tipo === 'fatto' ? 'Segnato come fatto oggi' : 'Segnato come parziale');
@@ -309,6 +337,7 @@ export default {
           prova(api.togliSpunta(voce.id, S.S.settimana));
         } else {
           S.applicaSpunta(voce.id, 'fatto', r.data, r.persona);
+          S.aggiungiRegistroLocale('pulizie', 'fatto', voce.nome, r.persona);
           prova(api.spuntaPulizia({ voce_id: voce.id, settimana: S.S.settimana, stato: 'fatto',
                                     data: iso(r.data), persona_id: r.persona }));
           avviso('Registrata il ' + gm(r.data));
@@ -326,6 +355,7 @@ export default {
         });
         if (!r || r.azione !== 'segna') return;
         S.applicaCambioBiancheria(b.id, r.data);
+        S.aggiungiRegistroLocale('pulizie', 'cambio biancheria', b.nome, r.persona);
         prova(api.cambioBiancheria({ id: b.id, data: iso(r.data), persona_id: r.persona }));
         avviso(b.nome + ' aggiornato al ' + gm(r.data));
         return;
@@ -338,6 +368,165 @@ export default {
         prova(api.aggiungiOre({ data: iso(OGGI), ora_inizio: '09:00', ora_fine: '12:00', persona_id: chi }));
         S.avvisa();
         avviso('Giornata di oggi aggiunta, 3 ore');
+        return;
+      }
+
+      /* ---- nuova voce / modifica / eliminazione ---- */
+      const opzCat = S.categorie('pulizie').map(c => ({ id: c.id, nome: c.nome }));
+      const opzFreq = Object.entries(FREQ).map(([id, nome]) => ({ id, nome }));
+      const opzPersone = [{ id:'', nome:'Nessuno in particolare' }, ...S.S.dati.persone.map(p => ({ id:p.id, nome:p.nome }))];
+
+      if (e.target.closest('[data-nuova-voce]')) {
+        const r = await modaleForm({
+          titolo: 'Nuova voce di checklist', colore: COLORE,
+          campi: [
+            { nome:'nome', etichetta:'Nome della voce', richiesto:true, placeholder:'Es. Vetri del salotto' },
+            { nome:'categoria_id', etichetta:'Zona', tipo:'select', opzioni: opzCat, richiesto:true },
+            { nome:'frequenza', etichetta:'Ogni quanto', tipo:'select', opzioni: opzFreq, difetto:'settimanale' },
+            { nome:'icona', etichetta:'Icona (una emoji)', placeholder:'🧽', difetto:'🧽' }
+          ]
+        });
+        if (r?.azione === 'salva' && r.valori.nome) {
+          const nuova = { id:'loc'+Date.now(), ...r.valori, ogni_giorni: FREQ[r.valori.frequenza] ? undefined : 7 };
+          S.aggiungiVoceLocale(nuova);
+          prova(api.creaVoce(r.valori));
+          avviso('Voce aggiunta alla checklist');
+        }
+        return;
+      }
+
+      const modVoce = e.target.closest('[data-mod-voce]');
+      if (modVoce) {
+        const v = S.S.dati.pulizie.voci.find(x => x.id === modVoce.dataset.modVoce);
+        const r = await modaleForm({
+          titolo: v.nome, colore: COLORE, permettiElimina: true,
+          valori: { nome:v.nome, categoria_id:v.categoria_id, frequenza:v.frequenza, icona:v.icona },
+          campi: [
+            { nome:'nome', etichetta:'Nome della voce', richiesto:true },
+            { nome:'categoria_id', etichetta:'Zona', tipo:'select', opzioni: opzCat },
+            { nome:'frequenza', etichetta:'Ogni quanto', tipo:'select', opzioni: opzFreq },
+            { nome:'icona', etichetta:'Icona' }
+          ]
+        });
+        if (r?.azione === 'salva') {
+          S.modificaVoceLocale(v.id, r.valori);
+          prova(api.modificaVoce({ id: v.id, ...r.valori }));
+          avviso('Voce aggiornata');
+        } else if (r?.azione === 'elimina') {
+          S.rimuoviVoceLocale(v.id);
+          prova(api.eliminaVoce(v.id));
+          avviso('Voce tolta dalla checklist');
+        }
+        return;
+      }
+
+      const elVoce = e.target.closest('[data-elimina-voce]');
+      if (elVoce) {
+        S.rimuoviVoceLocale(elVoce.dataset.eliminaVoce);
+        prova(api.eliminaVoce(elVoce.dataset.eliminaVoce));
+        avviso('Voce tolta dalla checklist');
+        return;
+      }
+
+      /* ---- biancheria: nuovo articolo, modifica, storico ---- */
+      if (e.target.closest('[data-nuovo-bianc]')) {
+        const r = await modaleForm({
+          titolo: 'Nuovo articolo di biancheria', colore: COLORE,
+          campi: [
+            { nome:'nome', etichetta:'Nome', richiesto:true, placeholder:'Es. Federe cuscini' },
+            { nome:'ogni_giorni', etichetta:'Ogni quanti giorni si cambia', tipo:'numero', difetto:7, min:1 },
+            { nome:'persona_id', etichetta:'Chi se ne occupa di solito', tipo:'select', opzioni: opzPersone },
+            { nome:'scorta', etichetta:'Quanti pezzi in scorta', tipo:'numero', difetto:2, min:0 },
+            { nome:'scorta_minima', etichetta:'Scorta minima prima di riordinare', tipo:'numero', difetto:2, min:0 }
+          ]
+        });
+        if (r?.azione === 'salva' && r.valori.nome) {
+          const nuovo = { id:'loc'+Date.now(), ...r.valori, ultimo_cambio: iso(OGGI) };
+          S.aggiungiBiancheriaLocale(nuovo);
+          prova(api.salvaBiancheria({ ...r.valori, ultimo_cambio: iso(OGGI) }));
+          avviso('Articolo aggiunto');
+        }
+        return;
+      }
+
+      const modBianc = e.target.closest('[data-mod-bianc]');
+      if (modBianc) {
+        const b = S.S.dati.biancheria.find(x => x.id === modBianc.dataset.modBianc);
+        const r = await modaleForm({
+          titolo: b.nome, colore: COLORE, permettiElimina: true,
+          valori: { nome:b.nome, ogni_giorni:b.ogni_giorni, persona_id:b.persona_id || '', scorta:b.scorta, scorta_minima:b.scorta_minima },
+          campi: [
+            { nome:'nome', etichetta:'Nome', richiesto:true },
+            { nome:'ogni_giorni', etichetta:'Ogni quanti giorni', tipo:'numero', min:1 },
+            { nome:'persona_id', etichetta:'Chi se ne occupa', tipo:'select', opzioni: opzPersone },
+            { nome:'scorta', etichetta:'Pezzi in scorta', tipo:'numero', min:0 },
+            { nome:'scorta_minima', etichetta:'Scorta minima', tipo:'numero', min:0 }
+          ]
+        });
+        if (r?.azione === 'salva') {
+          S.modificaBiancheriaLocale(b.id, r.valori);
+          prova(api.salvaBiancheria({ id: b.id, ...r.valori }));
+          avviso('Articolo aggiornato');
+        } else if (r?.azione === 'elimina') {
+          S.rimuoviBiancheriaLocale(b.id);
+          prova(api.eliminaBiancheria(b.id));
+          avviso('Articolo tolto');
+        }
+        return;
+      }
+
+      const storico = e.target.closest('[data-storico]');
+      if (storico) {
+        const b = S.S.dati.biancheria.find(x => x.id === storico.dataset.storico);
+        const box = root.querySelector('#storico-bianc');
+        box.innerHTML = '<p class="vuoto">Carico lo storico…</p>';
+        try {
+          const r = await api.storicoBiancheria(b.id);
+          box.innerHTML = vistaStoricoBiancheria(b, r.cambi);
+        } catch { box.innerHTML = vistaStoricoBiancheria(b, []); }
+        box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+        return;
+      }
+
+      const elCambio = e.target.closest('[data-elimina-cambio]');
+      if (elCambio) {
+        prova(api.eliminaCambioBiancheria(elCambio.dataset.eliminaCambio));
+        elCambio.closest('.log-riga').remove();
+        avviso('Cambio tolto dallo storico');
+        return;
+      }
+
+      /* ---- ore lavorate: modifica e cancellazione righe storiche ---- */
+      const modOre = e.target.closest('[data-mod-ore]');
+      if (modOre) {
+        const o = S.S.dati.pulizie.ore.find(x => String(x.id) === modOre.dataset.modOre);
+        const r = await modaleForm({
+          titolo: 'Correggi la giornata', colore: COLORE, permettiElimina: true,
+          valori: { data:o.data, ora_inizio:o.ora_inizio, ora_fine:o.ora_fine, persona_id:o.persona_id || '' },
+          campi: [
+            { nome:'data', etichetta:'Giorno', tipo:'data', richiesto:true },
+            { nome:'ora_inizio', etichetta:'Ora inizio (es. 09:00)' },
+            { nome:'ora_fine', etichetta:'Ora fine (es. 12:00)' },
+            { nome:'persona_id', etichetta:'Chi', tipo:'select', opzioni: opzPersone }
+          ]
+        });
+        if (r?.azione === 'salva') {
+          S.modificaOreLocale(o.id, r.valori);
+          prova(api.modificaOre({ id: o.id, ...r.valori }));
+          avviso('Giornata corretta');
+        } else if (r?.azione === 'elimina') {
+          S.rimuoviOreLocale(o.id);
+          prova(api.eliminaOre(o.id));
+          avviso('Giornata eliminata');
+        }
+        return;
+      }
+
+      const elOre = e.target.closest('[data-elimina-ore]');
+      if (elOre) {
+        S.rimuoviOreLocale(elOre.dataset.eliminaOre);
+        prova(api.eliminaOre(elOre.dataset.eliminaOre));
+        avviso('Giornata eliminata');
       }
     });
   }

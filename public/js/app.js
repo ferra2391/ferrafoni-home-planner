@@ -2,7 +2,7 @@
 // ridisegno quando lo stato cambia. Nessun modulo tocca il DOM degli altri.
 
 import { $, $$, esc, GG, MM, OGGI } from './util.js';
-import { agganciaModale } from './ui.js';
+import { agganciaModale, agganciaModaleForm } from './ui.js';
 import { MODULI, modulo } from './moduli/indice.js';
 import * as S from './stato.js';
 import { rete } from './api.js';
@@ -121,6 +121,7 @@ async function avvia(){
   if (localStorage.getItem('ferrafoni.testoGrande') === '1') document.body.classList.add('testo-grande');
   agganciaGuscio();
   agganciaModale();
+  agganciaModaleForm();
   S.iscriviti(disegna);
   await S.carica();
 

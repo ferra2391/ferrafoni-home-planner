@@ -2,7 +2,7 @@
 // raggruppate per categoria e con la data che si sposta da sola.
 
 import { esc, gm, relativa, avviso, iso, OGGI } from '../util.js';
-import { riq, tabella, rigaCfg, interruttore, barra } from '../ui.js';
+import { riq, tabella, rigaCfg, interruttore, barra, modaleForm } from '../ui.js';
 import { api, prova } from '../api.js';
 import * as S from '../stato.js';
 
@@ -20,11 +20,16 @@ function vistaScadenze(){
           <span class="sm">${gm(a.quando)}</span></td>
       <td>${a.ricorrenza_giorni ? 'ogni ' + (a.ricorrenza_giorni === 365 ? 'anno' :
             a.ricorrenza_giorni === 180 ? '6 mesi' : a.ricorrenza_giorni + ' giorni') : 'una volta'}</td>
-      <td style="text-align:right"><button class="btn piccolo" style="background:var(--attivita)" data-fatta="${a.id}">Fatta</button></td>
+      <td style="text-align:right"><div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
+        <button class="btn piccolo" style="background:var(--attivita)" data-fatta="${a.id}">Fatta</button>
+        <button data-mod-att="${a.id}" title="Modifica">✎</button>
+      </div></td>
     </tr>`);
 
   return `<div class="griglia g-lato">
-    ${riq('Scadenze', tabella(['Attività','Chi','Scade','Ricorre',''], righe),
+    ${riq('Scadenze', tabella(['Attività','Chi','Scade','Ricorre',''], righe) +
+        `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
+           <button class="btn chiaro pieno" data-nuova-attivita>Nuova attività</button></div>`,
       { raso:true, classe:'tinta', colore:COLORE, meta:'in rosso quelle passate e di oggi' })}
     <div class="griglia" style="align-content:start">
       ${riq('Per categoria', cats.map(c => {
@@ -85,19 +90,77 @@ export default {
   },
   render(sezione){ return sezione === 'impostazioni' ? vistaImpostazioni() : vistaScadenze(); },
   aggancia(root){
-    root.addEventListener('click', e => {
-      const b = e.target.closest('[data-fatta]');
-      if (!b) return;
-      const a = S.S.dati.attivita.find(x => x.id === b.dataset.fatta);
-      if (!a) return;
-      a.ultima_esecuzione = iso(OGGI);
-      if (a.ricorrenza_giorni) {
-        const p = new Date(OGGI); p.setDate(p.getDate() + a.ricorrenza_giorni);
-        a.scadenza = iso(p);
+    root.addEventListener('click', async e => {
+      const fatta = e.target.closest('[data-fatta]');
+      if (fatta) {
+        const a = S.S.dati.attivita.find(x => x.id === fatta.dataset.fatta);
+        if (!a) return;
+        a.ultima_esecuzione = iso(OGGI);
+        if (a.ricorrenza_giorni) {
+          const p = new Date(OGGI); p.setDate(p.getDate() + a.ricorrenza_giorni);
+          a.scadenza = iso(p);
+        }
+        S.aggiungiRegistroLocale('attivita', 'fatto', a.nome, a.persona_id);
+        prova(api.attivitaFatta(a.id));
+        S.avvisa();
+        avviso(a.nome + ': prossima scadenza ' + (a.scadenza ? relativa(a.scadenza) : 'nessuna'));
+        return;
       }
-      prova(api.attivitaFatta(a.id));
-      S.avvisa();
-      avviso(a.nome + ': prossima scadenza ' + (a.scadenza ? relativa(a.scadenza) : 'nessuna'));
+
+      const opzCat = S.categorie('attivita').map(c => ({ id:c.id, nome:c.nome }));
+      const opzPersone = [{ id:'', nome:'Nessuno in particolare' }, ...S.S.dati.persone.map(p => ({ id:p.id, nome:p.nome }))];
+      const opzRic = [
+        { id:'', nome:'Una volta sola' }, { id:'30', nome:'Ogni mese' }, { id:'90', nome:'Ogni 3 mesi' },
+        { id:'180', nome:'Ogni 6 mesi' }, { id:'365', nome:'Ogni anno' }
+      ];
+
+      if (e.target.closest('[data-nuova-attivita]')) {
+        const r = await modaleForm({
+          titolo: 'Nuova attività', colore: COLORE,
+          valori: { scadenza: iso(OGGI) },
+          campi: [
+            { nome:'nome', etichetta:'Che cosa', richiesto:true, placeholder:'Es. Revisione auto' },
+            { nome:'categoria_id', etichetta:'Categoria', tipo:'select', opzioni: opzCat, richiesto:true },
+            { nome:'persona_id', etichetta:'Chi se ne occupa', tipo:'select', opzioni: opzPersone },
+            { nome:'scadenza', etichetta:'Scade il', tipo:'data', richiesto:true },
+            { nome:'ricorrenza_giorni', etichetta:'Si ripete', tipo:'select', opzioni: opzRic }
+          ]
+        });
+        if (r?.azione === 'salva' && r.valori.nome && r.valori.scadenza) {
+          const v = { ...r.valori, ricorrenza_giorni: r.valori.ricorrenza_giorni ? Number(r.valori.ricorrenza_giorni) : null };
+          S.aggiungiAttivitaLocale({ id:'loc'+Date.now(), ...v });
+          prova(api.creaAttivita(v));
+          avviso('Attività aggiunta');
+        }
+        return;
+      }
+
+      const mod = e.target.closest('[data-mod-att]');
+      if (mod) {
+        const a = S.S.dati.attivita.find(x => x.id === mod.dataset.modAtt);
+        const r = await modaleForm({
+          titolo: a.nome, colore: COLORE, permettiElimina: true,
+          valori: { nome:a.nome, categoria_id:a.categoria_id, persona_id:a.persona_id || '',
+                    scadenza:a.scadenza, ricorrenza_giorni: a.ricorrenza_giorni ? String(a.ricorrenza_giorni) : '' },
+          campi: [
+            { nome:'nome', etichetta:'Che cosa', richiesto:true },
+            { nome:'categoria_id', etichetta:'Categoria', tipo:'select', opzioni: opzCat },
+            { nome:'persona_id', etichetta:'Chi se ne occupa', tipo:'select', opzioni: opzPersone },
+            { nome:'scadenza', etichetta:'Scade il', tipo:'data' },
+            { nome:'ricorrenza_giorni', etichetta:'Si ripete', tipo:'select', opzioni: opzRic }
+          ]
+        });
+        if (r?.azione === 'salva') {
+          const v = { ...r.valori, ricorrenza_giorni: r.valori.ricorrenza_giorni ? Number(r.valori.ricorrenza_giorni) : null };
+          S.modificaAttivitaLocale(a.id, v);
+          prova(api.modificaAttivita({ id: a.id, ...v }));
+          avviso('Attività aggiornata');
+        } else if (r?.azione === 'elimina') {
+          S.rimuoviAttivitaLocale(a.id);
+          prova(api.eliminaAttivita(a.id));
+          avviso('Attività eliminata');
+        }
+      }
     });
   }
 };

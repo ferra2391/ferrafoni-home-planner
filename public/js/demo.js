@@ -152,6 +152,11 @@ export function demo(settimana = iso(lunedi())){
     attivita: ATT.map(([id, nome, categoria_id, persona_id, giorni, ricorrenza_giorni]) =>
       ({ id, nome, categoria_id, persona_id, scadenza:g(giorni), ricorrenza_giorni })),
     eventi: EVENTI.map(([id, titolo, calendario, giorno, ora, persona_id]) =>
-      ({ id, titolo, calendario, inizio: iso(piu(lun, giorno)) + 'T' + ora, persona_id }))
+      ({ id, titolo, calendario, inizio: iso(piu(lun, giorno)) + 'T' + ora, persona_id })),
+    registro: [
+      { modulo:'pulizie', azione:'fatto', dettaglio:'Bagno e sanitari', persona_id:'collab', persona_nome:'Collaboratrice', creato_il: new Date(Date.now()-3600e3).toISOString() },
+      { modulo:'spesa', azione:'aggiunto', dettaglio:'Pannolini taglia 5', persona_id:'vivien', persona_nome:'Vivien', creato_il: new Date(Date.now()-7200e3).toISOString() },
+      { modulo:'pulizie', azione:'cambio biancheria', dettaglio:'b02', persona_id:'collab', persona_nome:'Collaboratrice', creato_il: new Date(Date.now()-86000e3).toISOString() }
+    ]
   };
 }
