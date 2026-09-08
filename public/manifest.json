@@ -1,0 +1,10 @@
+{
+  "name": "Ferrafoni Home Planner",
+  "short_name": "Casa Ferrafoni",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#EBE8DF",
+  "theme_color": "#16222C",
+  "lang": "it"
+}

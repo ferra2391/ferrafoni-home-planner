@@ -1,0 +1,40 @@
+import { ok, errore, corpo, oggi, lunedi, annota } from '../_utils.js';
+
+// GET /api/pulizie/spunte?settimana=AAAA-MM-GG
+export async function onRequestGet({ env, request }) {
+  const url = new URL(request.url);
+  const settimana = url.searchParams.get('settimana') || lunedi();
+  const r = await env.DB.prepare('SELECT * FROM pulizie_spunte WHERE settimana = ?').bind(settimana).all();
+  return ok({ settimana, spunte: r.results });
+}
+
+// POST /api/pulizie/spunte  { voce_id, settimana, stato, data, persona_id }
+export async function onRequestPost({ env, request }) {
+  const d = await corpo(request);
+  if (!d.voce_id) return errore('Manca voce_id.');
+
+  const settimana = d.settimana || lunedi();
+  const stato = d.stato === 'parziale' ? 'parziale' : 'fatto';
+  const data = d.data || oggi();
+
+  await env.DB.prepare(
+    `INSERT INTO pulizie_spunte (voce_id, settimana, stato, data, persona_id, nota)
+     VALUES (?,?,?,?,?,?)
+     ON CONFLICT(voce_id, settimana) DO UPDATE SET
+       stato = excluded.stato, data = excluded.data,
+       persona_id = excluded.persona_id, nota = excluded.nota`
+  ).bind(d.voce_id, settimana, stato, data, d.persona_id || null, d.nota || null).run();
+
+  await annota(env.DB, 'pulizie', stato, d.voce_id, d.persona_id, d.origine || 'tablet');
+  return ok({ voce_id: d.voce_id, settimana, stato, data, persona_id: d.persona_id || null });
+}
+
+// DELETE /api/pulizie/spunte?voce_id=v01&settimana=AAAA-MM-GG
+export async function onRequestDelete({ env, request }) {
+  const url = new URL(request.url);
+  const voce = url.searchParams.get('voce_id');
+  const settimana = url.searchParams.get('settimana') || lunedi();
+  if (!voce) return errore('Manca voce_id.');
+  await env.DB.prepare('DELETE FROM pulizie_spunte WHERE voce_id = ? AND settimana = ?').bind(voce, settimana).run();
+  return ok({ tolta: voce, settimana });
+}

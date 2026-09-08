@@ -1,0 +1,133 @@
+/* ============================================================
+   Ferrafoni Home Planner — fondamenta
+   ============================================================ */
+
+:root{
+  /* superfici */
+  --inchiostro:#16222C;
+  --inchiostro-alto:#22323F;
+  --inchiostro-basso:#0E1920;
+  --carta:#EBE8DF;
+  --pannello:#FCFBF8;
+  --linea:#DAD5C8;
+  --linea-tenue:#E7E3D8;
+
+  /* testo */
+  --testo:#1E2C36;
+  --tenue:#6C7883;
+  --tenue-chiaro:#8FA0AC;
+
+  /* moduli */
+  --pulizie:#2F7D6D;
+  --calendario:#3D5BA9;
+  --spesa:#B9741F;
+  --attivita:#9C3A5E;
+  --home:#4A5A64;
+
+  /* segnali */
+  --rosso:#BE3227;
+  --rosso-fondo:#FBEDE9;
+  --ambra:#C58312;
+  --ambra-fondo:#FBF1DC;
+  --verde:#2F7D6D;
+
+  /* forma */
+  --raggio:14px;
+  --raggio-p:10px;
+  --colonna:250px;
+
+  /* profondità */
+  --ombra-1:0 1px 2px rgba(22,34,44,.05), 0 2px 6px rgba(22,34,44,.04);
+  --ombra-2:0 2px 4px rgba(22,34,44,.06), 0 8px 20px rgba(22,34,44,.08);
+  --ombra-3:0 10px 24px rgba(22,34,44,.10), 0 30px 60px rgba(22,34,44,.12);
+
+  --accento:var(--home);
+  --scala:1;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--carta);
+  color:var(--testo);
+  font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  font-size:calc(15.5px * var(--scala));
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+body.testo-grande{--scala:1.12}
+
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;-webkit-appearance:none}
+:focus-visible{outline:2.5px solid var(--accento);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#CFC9BA;border-radius:5px;border:3px solid var(--carta)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- tipografia ---------- */
+h1,h2,h3,h4{margin:0;letter-spacing:-.022em}
+.titolo-x{font-size:1.65rem;font-weight:700;letter-spacing:-.032em}
+.titolo{font-size:1.08rem;font-weight:600}
+.occhiello{font-size:.8rem;color:var(--tenue)}
+.numero{font-variant-numeric:tabular-nums}
+
+/* ---------- bottoni ---------- */
+.btn{
+  height:50px;padding:0 20px;border-radius:11px;background:var(--accento);color:#fff;
+  font-size:.95rem;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  box-shadow:var(--ombra-1);transition:transform .12s ease,filter .14s ease,box-shadow .14s ease;
+}
+.btn:hover{filter:brightness(1.07);box-shadow:var(--ombra-2)}
+.btn:active{transform:scale(.97)}
+.btn.chiaro{background:var(--pannello);color:var(--testo);border:1px solid var(--linea)}
+.btn.chiaro:hover{filter:none;background:#fff}
+.btn.piccolo{height:42px;padding:0 15px;font-size:.88rem;border-radius:9px}
+.btn.pieno{width:100%}
+
+/* ---------- etichette ---------- */
+.pill{
+  display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 10px;border-radius:8px;
+  font-size:.79rem;font-weight:600;white-space:nowrap;
+  background:color-mix(in srgb,var(--c,var(--tenue)) 13%,transparent);color:var(--c,var(--tenue));
+}
+.pill.neutra{background:#EEEBE3;color:var(--tenue)}
+.pill.rossa{background:var(--rosso-fondo);color:var(--rosso)}
+.pill.ambra{background:var(--ambra-fondo);color:#8C5C05}
+.pill.verde{background:#E2EFEA;color:var(--verde)}
+
+/* ---------- interruttore ---------- */
+.sw{width:56px;height:33px;border-radius:17px;background:#D8D2C4;position:relative;flex:none;
+  transition:background .2s ease;box-shadow:inset 0 1px 2px rgba(0,0,0,.07)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:27px;height:27px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s cubic-bezier(.3,1.4,.5,1)}
+.sw.on{background:var(--c,var(--accento))}
+.sw.on::after{transform:translateX(23px)}
+
+/* ---------- campi ---------- */
+select,input[type=text],input[type=number],input[type=time],input[type=date],input[type=password]{
+  font:inherit;font-size:.95rem;height:50px;padding:0 14px;border:1px solid var(--linea);
+  border-radius:11px;background:#fff;color:var(--testo);min-width:150px;
+}
+input:focus,select:focus{border-color:var(--accento)}
+input[type=text]{min-width:200px}
+
+/* ---------- barre e anelli ---------- */
+.barra{height:8px;border-radius:5px;background:#E4E0D5;overflow:hidden}
+.barra i{display:block;height:100%;border-radius:5px;background:var(--c,var(--accento));
+  transition:width .45s cubic-bezier(.2,.8,.3,1)}
+.anello{transform:rotate(-90deg)}
+.anello circle{fill:none;stroke-width:7;stroke-linecap:round}
+.anello .sfondo{stroke:#E4E0D5}
+.anello .avanti{stroke:var(--c,var(--accento));transition:stroke-dashoffset .6s cubic-bezier(.2,.8,.3,1)}
+
+/* ---------- segmenti ---------- */
+.segmenti{display:inline-flex;background:#E3DFD4;border-radius:12px;padding:4px;gap:2px}
+.segmenti button{padding:10px 17px;font-size:.88rem;color:var(--tenue);border-radius:9px;
+  font-weight:500;transition:background .16s,color .16s,box-shadow .16s}
+.segmenti button.on{background:var(--pannello);color:var(--testo);box-shadow:var(--ombra-1)}
+
+/* ---------- comparsa ---------- */
+@keyframes sali{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.entra{animation:sali .34s cubic-bezier(.2,.8,.3,1) both}

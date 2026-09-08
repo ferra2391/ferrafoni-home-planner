@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Casa Ferrafoni">
+<meta name="theme-color" content="#16222C">
+<link rel="manifest" href="/manifest.json">
+<title>Ferrafoni Home Planner</title>
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  /* griglia della settimana, usata solo dal modulo calendario */
+  .sett{display:grid;grid-template-columns:repeat(7,1fr)}
+  .giorno{border-right:1px solid var(--linea-tenue);min-height:210px;padding:11px 10px}
+  .giorno:last-child{border-right:0}
+  .giorno.oggi{background:#F5F2E9}
+  .giorno h4{font-size:.79rem;color:var(--tenue);font-weight:500;margin-bottom:10px}
+  .giorno h4 b{display:block;font-size:1.1rem;color:var(--testo);font-weight:600;font-variant-numeric:tabular-nums}
+  .ev{border-radius:8px;padding:8px 9px;margin-bottom:7px;font-size:.76rem;line-height:1.35;
+      background:color-mix(in srgb,var(--ec) 13%,transparent);border-left:3px solid var(--ec);color:#25333D}
+  .ev b{display:block;font-weight:600}
+  .ev span{color:var(--tenue)}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <nav class="colonna" aria-label="Moduli">
+    <div class="marchio">
+      <div class="casa"><span class="punto"></span> Casa Ferrafoni</div>
+      <h1>Home Planner</h1>
+      <p>Davide, Vivien, Amelie e Maddie</p>
+    </div>
+    <ul class="voci" id="voci"></ul>
+    <div class="piede">
+      <button id="modo-pulizie">🧽 Vista per chi pulisce</button>
+      <button id="vai-generali">⚙️ Casa e famiglia</button>
+      <div class="stato-rete" id="stato-rete"></div>
+    </div>
+  </nav>
+
+  <div class="principale">
+    <header class="testata">
+      <div class="sx">
+        <p class="occhiello" id="occhiello">Panoramica</p>
+        <h2 class="titolo-x" id="titolo">Oggi</h2>
+      </div>
+      <div class="azioni">
+        <div class="facce" id="facce"></div>
+        <div class="data" id="data-oggi"></div>
+        <button class="btn chiaro" id="esci-modo" style="display:none">Chiudi vista pulizie</button>
+      </div>
+    </header>
+
+    <div class="tabs" id="schede"></div>
+
+    <div class="scorri" id="scorri">
+      <div id="corpo"><p class="vuoto">Carico i dati di casa…</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- modale della data, condivisa da checklist e biancheria -->
+<div class="velo" id="velo">
+  <div class="foglio" role="dialog" aria-modal="true">
+    <header>
+      <h3 id="foglio-titolo"></h3>
+      <p id="foglio-sotto"></p>
+    </header>
+    <div class="scelte" id="foglio-scelte"></div>
+    <div class="riga-campo">
+      <input type="date" id="foglio-data">
+      <button class="btn chiaro" id="foglio-conferma">Usa questa data</button>
+    </div>
+    <div class="persone" id="foglio-persone"></div>
+    <footer>
+      <button class="btn chiaro" id="foglio-togli">Togli la spunta</button>
+      <button class="btn" style="background:var(--pulizie)" id="foglio-chiudi">Chiudi</button>
+    </footer>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
