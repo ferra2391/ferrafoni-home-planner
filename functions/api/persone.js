@@ -13,17 +13,17 @@ export async function onRequestPost({ env, request }) {
   const iniziali = d.iniziali || d.nome.slice(0, 2).toUpperCase();
   const max = await env.DB.prepare('SELECT max(ordine) AS m FROM persone').first();
   await env.DB.prepare(
-    'INSERT INTO persone (id, nome, iniziali, ruolo, colore, ordine) VALUES (?,?,?,?,?,?)'
-  ).bind(id, d.nome, iniziali, d.ruolo || 'adulto', d.colore || '#6E7A83', (max?.m || 0) + 1).run();
+    'INSERT INTO persone (id, nome, iniziali, ruolo, colore, tariffa_oraria, ordine) VALUES (?,?,?,?,?,?,?)'
+  ).bind(id, d.nome, iniziali, d.ruolo || 'adulto', d.colore || '#6E7A83', d.tariffa_oraria || 0, (max?.m || 0) + 1).run();
   return ok({ id }, 201);
 }
 
-// PATCH /api/persone  { id, nome, iniziali, ruolo, colore, attiva }
+// PATCH /api/persone  { id, nome, iniziali, ruolo, colore, tariffa_oraria, attiva }
 export async function onRequestPatch({ env, request }) {
   const d = await corpo(request);
   if (!d.id) return errore('Manca id.');
   const campi = [], valori = [];
-  ['nome', 'iniziali', 'ruolo', 'colore', 'attiva', 'ordine'].forEach(c => {
+  ['nome', 'iniziali', 'ruolo', 'colore', 'tariffa_oraria', 'attiva', 'ordine'].forEach(c => {
     if (d[c] !== undefined) { campi.push(c + ' = ?'); valori.push(d[c]); }
   });
   if (!campi.length) return errore('Niente da aggiornare.');

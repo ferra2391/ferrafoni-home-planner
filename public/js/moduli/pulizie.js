@@ -174,6 +174,8 @@ function vistaOre(){
   const ore = S.S.dati.pulizie.ore;
   const mese = ore.filter(o => o.data.slice(0, 7) === iso(OGGI).slice(0, 7));
   const totMese = mese.reduce((s, o) => s + o.ore, 0);
+  const lucia = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice');
+  const conto = lucia ? S.contoPersona(lucia.id) : null;
 
   return `<div class="griglia g-lato">
     ${riq('Registro giornate', tabella(['Giorno', 'Orario', 'Ore', 'Chi', ''],
@@ -196,6 +198,11 @@ function vistaOre(){
           <span class="occhiello" style="display:block">giornate</span></div>
         </div>
         <p class="nota">Il totale si aggiorna a ogni giornata registrata dalla checklist.</p>`)}
+      ${conto ? riq('Conto con ' + lucia.nome, `
+        <p style="margin:0 0 12px;font-size:.92rem">${fraseConto(lucia.nome, conto.differenza).testo}</p>
+        <p class="nota" style="margin:0 0 14px">${fraseConto(lucia.nome, conto.differenza).sotto}</p>
+        <button class="btn chiaro pieno" data-vai-pagamenti>Vai ai pagamenti</button>
+      `) : ''}
     </div>
   </div>`;
 }
@@ -205,6 +212,7 @@ function vistaOre(){
 function vistaImpostazioni(){
   const cats = S.categorie('pulizie');
   const voci = S.S.dati.pulizie.voci;
+  const lucia = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice');
 
   return `<div class="griglia g-lato">
     <div class="griglia" style="align-content:start">
@@ -241,12 +249,18 @@ function vistaImpostazioni(){
 
     <div class="griglia" style="align-content:start">
       ${riq('Chi pulisce', `<ul class="cfg" style="margin:-16px -18px">
-        ${rigaCfg('Nome', 'Compare accanto a ogni spunta.', `<input type="text" value="${esc(S.impostazione('pulizie','nome_collaboratrice','Collaboratrice'))}" style="min-width:170px">`)}
+        ${lucia ? `
+        ${rigaCfg('Nome', 'Compare accanto a ogni spunta e nel modulo pagamenti.', `<input type="text" data-persona-nome="${lucia.id}" value="${esc(lucia.nome)}" style="min-width:170px">`)}
+        ${rigaCfg('Tariffa oraria', 'Usata per calcolare quanto è dovuto in base alle ore lavorate.', `<div style="display:flex;align-items:center;gap:8px"><input type="number" min="0" step="0.5" data-persona-tariffa="${lucia.id}" value="${lucia.tariffa_oraria || 0}" style="min-width:90px"><span style="color:var(--tenue)">€/ora</span></div>`)}
+        ` : `<li><span class="tx"><span>Nessuna persona con ruolo "chi pulisce". Aggiungila da Casa e famiglia.</span></span></li>`}
         ${rigaCfg('Giorni di servizio', '', `<select><option selected>Lunedì e giovedì</option><option>Solo lunedì</option><option>Tre volte a settimana</option></select>`)}
         ${rigaCfg('Orario abituale', '', `<input type="time" value="09:00" style="min-width:120px">`)}
         ${rigaCfg('Registra le ore lavorate', 'Tabella giorno, orario e ore con totale mensile.', interruttore(true, COLORE))}
         ${rigaCfg('Vista semplificata', 'Solo checklist e ore, senza calendario, spesa e attività.', interruttore(true, COLORE))}
-      </ul>`)}
+      </ul>
+      ${lucia ? `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
+        <button class="btn chiaro pieno" data-salva-tariffa="${lucia.id}">Salva nome e tariffa</button>
+      </div>` : ''}`)}
       ${riq('Promemoria', `<ul class="cfg" style="margin:-16px -18px">
         ${rigaCfg('Avviso il mattino del servizio', 'Alle 08:00.', interruttore(true, COLORE))}
         ${rigaCfg('Segnala le voci scadute', 'Compaiono in rosso nel riquadro della home.', interruttore(true, COLORE))}
@@ -258,6 +272,71 @@ function vistaImpostazioni(){
 
 /* ---------- modulo ---------- */
 
+/* ---------- pagamenti ---------- */
+
+function fraseConto(nome, differenza){
+  if (Math.abs(differenza) < 0.005) {
+    return { testo: nome + ': conto in pari', sotto: 'Quanto pagato corrisponde esattamente al dovuto.', classe: 'neutra' };
+  }
+  if (differenza > 0) {
+    return {
+      testo: nome + ' è a debito di ' + differenza.toFixed(2).replace('.', ',') + ' €',
+      sotto: 'Ha ricevuto ' + differenza.toFixed(2).replace('.', ',') + ' € in più del dovuto: si scala dal prossimo pagamento.',
+      classe: 'ambra'
+    };
+  }
+  return {
+    testo: nome + ' è a credito di ' + Math.abs(differenza).toFixed(2).replace('.', ',') + ' €',
+    sotto: 'Le devi ancora ' + Math.abs(differenza).toFixed(2).replace('.', ',') + ' €.',
+    classe: 'rossa'
+  };
+}
+
+function bloccoPersona(p){
+  const conto = S.contoPersona(p.id);
+  const frase = fraseConto(p.nome, conto.differenza);
+  const pagamenti = S.pagamentiDi(p.id);
+
+  return riq(p.nome, `
+    <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:18px">
+      <div><b style="font-size:1.7rem;letter-spacing:-.03em;color:${COLORE}">${conto.oreTotali.toFixed(1).replace('.', ',')}</b>
+        <span class="occhiello" style="display:block">ore lavorate in tutto</span></div>
+      <div><b style="font-size:1.7rem;letter-spacing:-.03em;color:${COLORE}">${conto.dovuto.toFixed(2).replace('.', ',')} €</b>
+        <span class="occhiello" style="display:block">dovuto a ${p.tariffa_oraria} €/ora</span></div>
+      <div><b style="font-size:1.7rem;letter-spacing:-.03em;color:${COLORE}">${conto.pagato.toFixed(2).replace('.', ',')} €</b>
+        <span class="occhiello" style="display:block">pagato finora</span></div>
+    </div>
+    <div class="urg ${frase.classe === 'neutra' ? 'calma' : ''}" style="cursor:default;${frase.classe === 'rossa' ? 'border-color:#EBCEC8' : ''}">
+      <span class="emj">${frase.classe === 'neutra' ? '✅' : frase.classe === 'ambra' ? '💶' : '🔔'}</span>
+      <span><b style="${frase.classe === 'ambra' ? 'color:#8A5F0B' : frase.classe === 'rossa' ? 'color:var(--rosso)' : ''}">${esc(frase.testo)}</b>
+      <span>${esc(frase.sotto)}</span></span>
+    </div>
+    <p class="section-t" style="margin:20px 0 0">Storico pagamenti</p>
+    <div style="margin:0 -18px">
+      ${pagamenti.length ? pagamenti.map(pg => `
+        <div class="log-riga">
+          <span class="log-punto" style="--c:${COLORE}"></span>
+          <span class="tx"><strong>${Number(pg.importo).toFixed(2).replace('.', ',')} €</strong>
+            <span>${gm(pg.data)}${pg.nota ? ' · ' + esc(pg.nota) : ''}</span></span>
+          <div class="riga-azioni">
+            <button data-mod-pag="${pg.id}" title="Modifica">✎</button>
+          </div>
+        </div>`).join('') : `<p class="vuoto">Nessun pagamento ancora registrato</p>`}
+    </div>
+    <div style="padding:16px 0 0">
+      <button class="btn pieno" style="background:${COLORE}" data-nuovo-pag="${p.id}">Registra un pagamento</button>
+    </div>
+  `, { classe: 'tinta', colore: COLORE });
+}
+
+function vistaPagamenti(){
+  const collaboratrici = S.S.dati.persone.filter(p => p.ruolo === 'collaboratrice');
+  if (!collaboratrici.length) {
+    return riq('Pagamenti', vuoto('Nessuna persona con ruolo "chi pulisce" al momento. Aggiungila da Casa e famiglia per attivare il conto.'));
+  }
+  return `<div class="griglia" style="gap:18px">${collaboratrici.map(bloccoPersona).join('')}</div>`;
+}
+
 export default {
   id: 'pulizie',
   nome: 'Pulizie',
@@ -267,6 +346,7 @@ export default {
     { id: 'checklist', nome: 'Checklist' },
     { id: 'biancheria', nome: 'Biancheria' },
     { id: 'ore', nome: 'Ore e storico' },
+    { id: 'pagamenti', nome: 'Pagamenti' },
     { id: 'impostazioni', nome: 'Impostazioni' }
   ],
 
@@ -278,11 +358,12 @@ export default {
   render(sezione){
     if (sezione === 'biancheria') return vistaBiancheria();
     if (sezione === 'ore') return vistaOre();
+    if (sezione === 'pagamenti') return vistaPagamenti();
     if (sezione === 'impostazioni') return vistaImpostazioni();
     return vistaChecklist();
   },
 
-  aggancia(root){
+  aggancia(root, contesto){
     root.addEventListener('click', async e => {
       const g = e.target.closest('[data-gruppo]');
       if (g) {
@@ -527,6 +608,66 @@ export default {
         S.rimuoviOreLocale(elOre.dataset.eliminaOre);
         prova(api.eliminaOre(elOre.dataset.eliminaOre));
         avviso('Giornata eliminata');
+        return;
+      }
+
+      if (e.target.closest('[data-salva-tariffa]')) {
+        const id = e.target.closest('[data-salva-tariffa]').dataset.salvaTariffa;
+        const nome = root.querySelector(`[data-persona-nome="${id}"]`).value.trim();
+        const tariffa = Number(root.querySelector(`[data-persona-tariffa="${id}"]`).value) || 0;
+        S.modificaPersonaLocale(id, { nome, tariffa_oraria: tariffa });
+        prova(api.modificaPersona({ id, nome, tariffa_oraria: tariffa }));
+        avviso('Nome e tariffa aggiornati');
+        return;
+      }
+
+      /* ---- pagamenti ---- */
+      const nuovoPag = e.target.closest('[data-nuovo-pag]');
+      if (nuovoPag) {
+        const personaId = nuovoPag.dataset.nuovoPag;
+        const r = await modaleForm({
+          titolo: 'Registra un pagamento', colore: COLORE,
+          valori: { data: iso(OGGI) },
+          campi: [
+            { nome:'importo', etichetta:'Quanto hai pagato (€)', tipo:'numero', min:0, step:0.5, richiesto:true },
+            { nome:'data', etichetta:'Quando', tipo:'data', richiesto:true },
+            { nome:'nota', etichetta:'Nota', placeholder:'Es. Contanti, bonifico...' }
+          ]
+        });
+        if (r?.azione === 'salva' && r.valori.importo) {
+          const pag = { id:'loc'+Date.now(), persona_id: personaId, ...r.valori, importo: Number(r.valori.importo) };
+          S.aggiungiPagamentoLocale(pag);
+          prova(api.creaPagamento({ persona_id: personaId, ...r.valori }));
+          avviso('Pagamento registrato');
+        }
+        return;
+      }
+
+      const modPag = e.target.closest('[data-mod-pag]');
+      if (modPag) {
+        const pag = (S.S.dati.pagamenti || []).find(x => String(x.id) === modPag.dataset.modPag);
+        const r = await modaleForm({
+          titolo: 'Modifica il pagamento', colore: COLORE, permettiElimina: true,
+          valori: { importo: pag.importo, data: pag.data, nota: pag.nota || '' },
+          campi: [
+            { nome:'importo', etichetta:'Importo (€)', tipo:'numero', min:0, step:0.5, richiesto:true },
+            { nome:'data', etichetta:'Quando', tipo:'data' },
+            { nome:'nota', etichetta:'Nota' }
+          ]
+        });
+        if (r?.azione === 'salva') {
+          const v = { ...r.valori, importo: Number(r.valori.importo) };
+          S.modificaPagamentoLocale(pag.id, v);
+          prova(api.modificaPagamento({ id: pag.id, ...v }));
+          avviso('Pagamento aggiornato');
+        } else if (r?.azione === 'elimina') {
+          S.rimuoviPagamentoLocale(pag.id);
+          prova(api.eliminaPagamento(pag.id));
+          avviso('Pagamento tolto');
+        }
+      }
+      if (e.target.closest('[data-vai-pagamenti]')) {
+        contesto.vai('pulizie', 'pagamenti');
       }
     });
   }

@@ -36,6 +36,23 @@ La colonna di sinistra, le schede e i badge si costruiscono da soli.
 
 ---
 
+## Aggiornamenti dopo la prima pubblicazione
+
+Se il database è già online (hai già fatto il Passo 2) e stai solo aggiungendo
+funzioni nuove, non serve rifare schema e seed da capo — cancellerebbero i dati
+che hai già inserito. Ogni volta che aggiungo tabelle nuove ti indico un file
+di migrazione a parte, con un nome tipo `migrazione-qualcosa.sql`.
+
+Il modulo pagamenti, per esempio, usa `migrazione-pagamenti-console.sql`:
+copialo nella Console di D1 su Cloudflare (stessa procedura di schema e seed)
+ed eseguilo una volta sola. Aggiunge la tariffa oraria e lo storico dei
+pagamenti senza toccare checklist, spesa o calendario già presenti.
+Rinomina anche "Collaboratrice" in "Lucia" e imposta 12 €/ora: se il nome o
+la cifra sono diversi, apri il file e modifica quelle due righe prima di
+incollarlo, oppure correggi da Pulizie → Impostazioni dopo averlo eseguito.
+
+---
+
 ## Passo 1 — Il repository su GitHub
 
 ```bash

@@ -19,12 +19,12 @@ DELETE FROM moduli;
 DELETE FROM persone;
 
 -- ---------- persone ----------
-INSERT INTO persone (id, nome, iniziali, ruolo, colore, ordine) VALUES
- ('davide','Davide','DA','adulto','#3D5BA9',1),
- ('vivien','Vivien','VI','adulto','#2F7D6D',2),
- ('amelie','Amelie','AM','bambina','#B9741F',3),
- ('maddie','Maddie','MA','bambina','#9C3A5E',4),
- ('collab','Collaboratrice','CO','collaboratrice','#6E7A83',5);
+INSERT INTO persone (id, nome, iniziali, ruolo, colore, tariffa_oraria, ordine) VALUES
+ ('davide','Davide','DA','adulto','#3D5BA9',0,1),
+ ('vivien','Vivien','VI','adulto','#2F7D6D',0,2),
+ ('amelie','Amelie','AM','bambina','#B9741F',0,3),
+ ('maddie','Maddie','MA','bambina','#9C3A5E',0,4),
+ ('collab','Lucia','LU','collaboratrice','#6E7A83',12,5);
 
 -- ---------- moduli ----------
 INSERT INTO moduli (id, nome, colore, icona, ordine) VALUES
@@ -106,10 +106,17 @@ INSERT INTO pulizie_spunte (voce_id, settimana, stato, data, persona_id) VALUES
  ('v16', date('now','weekday 1','-7 day'), 'fatto',    date('now','-1 day'), 'collab');
 
 -- ---------- ore lavorate ----------
-INSERT INTO ore_lavorate (persona_id, data, ora_inizio, ora_fine, ore) VALUES
- ('collab', date('now','-8 day'),  '09:00','12:30', 3.5),
- ('collab', date('now','-4 day'),  '09:00','12:00', 3.0),
- ('collab', date('now','-1 day'),  '09:00','12:30', 3.5);
+INSERT INTO ore_lavorate (persona_id, data, ora_inizio, ora_fine, ore, tariffa_oraria) VALUES
+ ('collab', date('now','-8 day'),  '09:00','12:30', 3.5, 12),
+ ('collab', date('now','-4 day'),  '09:00','12:00', 3.0, 12),
+ ('collab', date('now','-1 day'),  '09:00','12:30', 3.5, 12);
+
+-- ---------- pagamenti ----------
+-- Esempio: nella settimana scorsa il dovuto era inferiore a quanto pagato,
+-- così il conto mostra "Lucia è a debito di 2 €" (le si scala dal prossimo pagamento).
+INSERT INTO pagamenti (persona_id, data, importo, nota) VALUES
+ ('collab', date('now','-8 day'), 40, 'Contanti, prima settimana'),
+ ('collab', date('now','-1 day'), 40, 'Bonifico');
 
 -- ---------- biancheria ----------
 INSERT INTO biancheria (id, nome, ogni_giorni, ultimo_cambio, persona_id, scorta, scorta_minima, ordine) VALUES

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS persone (
   iniziali    TEXT,
   ruolo       TEXT NOT NULL DEFAULT 'adulto',   -- adulto | bambina | collaboratrice | ospite
   colore      TEXT,
+  tariffa_oraria REAL NOT NULL DEFAULT 0,        -- usata per il modulo pagamenti, se ruolo = collaboratrice
   attiva      INTEGER NOT NULL DEFAULT 1,
   ordine      INTEGER NOT NULL DEFAULT 0
 );
@@ -86,9 +87,22 @@ CREATE TABLE IF NOT EXISTS ore_lavorate (
   ora_inizio  TEXT,
   ora_fine    TEXT,
   ore         REAL NOT NULL DEFAULT 0,
+  tariffa_oraria REAL,                           -- tariffa applicata in quel momento, resta fissa nello storico
   nota        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ore_data ON ore_lavorate(data);
+
+-- Pagamenti fatti a chi lavora in casa: il conto è la differenza tra
+-- la somma di questi pagamenti e il dovuto calcolato dalle ore lavorate.
+CREATE TABLE IF NOT EXISTS pagamenti (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  persona_id  TEXT NOT NULL REFERENCES persone(id),
+  data        TEXT NOT NULL,
+  importo     REAL NOT NULL,
+  nota        TEXT,
+  creato_il   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pagamenti_persona ON pagamenti(persona_id, data);
 
 CREATE TABLE IF NOT EXISTS biancheria (
   id             TEXT PRIMARY KEY,

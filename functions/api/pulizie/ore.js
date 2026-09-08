@@ -24,10 +24,19 @@ export async function onRequestPost({ env, request }) {
   let ore = d.ore;
   if (ore === undefined && d.ora_inizio && d.ora_fine) ore = calcolaOre(d.ora_inizio, d.ora_fine);
   if (!ore || ore <= 0) return errore('Ore non valide.');
+
+  // la tariffa si fissa al momento della registrazione, così resta storica
+  // anche se in futuro la tariffa della persona cambia
+  let tariffa = d.tariffa_oraria;
+  if (tariffa === undefined && d.persona_id) {
+    const p = await env.DB.prepare('SELECT tariffa_oraria FROM persone WHERE id = ?').bind(d.persona_id).first();
+    tariffa = p?.tariffa_oraria ?? null;
+  }
+
   const r = await env.DB.prepare(
-    'INSERT INTO ore_lavorate (persona_id, data, ora_inizio, ora_fine, ore, nota) VALUES (?,?,?,?,?,?) RETURNING id'
-  ).bind(d.persona_id || null, data, d.ora_inizio || null, d.ora_fine || null, ore, d.nota || null).first();
-  return ok({ id: r.id, data, ore }, 201);
+    'INSERT INTO ore_lavorate (persona_id, data, ora_inizio, ora_fine, ore, tariffa_oraria, nota) VALUES (?,?,?,?,?,?,?) RETURNING id'
+  ).bind(d.persona_id || null, data, d.ora_inizio || null, d.ora_fine || null, ore, tariffa, d.nota || null).first();
+  return ok({ id: r.id, data, ore, tariffa_oraria: tariffa }, 201);
 }
 
 // PATCH /api/pulizie/ore  { id, data, ora_inizio, ora_fine, persona_id, ore }  → corregge una giornata già registrata

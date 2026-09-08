@@ -88,6 +88,11 @@ export const api = {
   modificaRicorrente: d => chiama('/spesa/ricorrenti', { method:'PATCH', body: JSON.stringify(d) }),
   eliminaRicorrente: id => chiama('/spesa/ricorrenti?id=' + id, { method:'DELETE' }),
 
+  // pagamenti
+  creaPagamento   : d => chiama('/pagamenti', { method:'POST', body: JSON.stringify(d) }),
+  modificaPagamento: d => chiama('/pagamenti', { method:'PATCH', body: JSON.stringify(d) }),
+  eliminaPagamento: id => chiama('/pagamenti?id=' + id, { method:'DELETE' }),
+
   // registro
   registro        : (modulo, limite) => chiama(`/registro?${modulo ? 'modulo='+modulo+'&' : ''}limite=${limite||80}`)
 };

@@ -226,3 +226,37 @@ export function aggiungiRicorrenteLocale(r){ S.dati.spesa.ricorrenti.push(r); av
 export function rimuoviRicorrenteLocale(id){
   S.dati.spesa.ricorrenti = S.dati.spesa.ricorrenti.filter(r => r.id !== id); avvisa();
 }
+
+/* ---------- pagamenti ---------- */
+// Il conto di una persona: quanto dovuto dalle ore lavorate, quanto pagato,
+// e la differenza. Positiva = ha ricevuto di più (è a debito verso di te,
+// si scala dal prossimo pagamento). Negativa = deve ancora ricevere (è a credito).
+export function contoPersona(personaId){
+  const ore = (S.dati?.pulizie.ore || []).filter(o => o.persona_id === personaId);
+  const p = persona(personaId);
+  const dovuto = ore.reduce((s, o) => s + o.ore * (o.tariffa_oraria ?? p?.tariffa_oraria ?? 0), 0);
+  const pagato = (S.dati?.pagamenti || [])
+    .filter(pg => pg.persona_id === personaId)
+    .reduce((s, pg) => s + Number(pg.importo), 0);
+  return {
+    oreTotali: ore.reduce((s, o) => s + o.ore, 0),
+    dovuto, pagato,
+    differenza: pagato - dovuto
+  };
+}
+
+export const pagamentiDi = personaId =>
+  (S.dati?.pagamenti || []).filter(p => p.persona_id === personaId)
+    .sort((a, b) => b.data.localeCompare(a.data));
+
+export function aggiungiPagamentoLocale(p){
+  if (!S.dati.pagamenti) S.dati.pagamenti = [];
+  S.dati.pagamenti.push(p); avvisa();
+}
+export function modificaPagamentoLocale(id, campi){
+  const p = (S.dati.pagamenti || []).find(x => String(x.id) === String(id));
+  if (p) { Object.assign(p, campi); avvisa(); }
+}
+export function rimuoviPagamentoLocale(id){
+  S.dati.pagamenti = (S.dati.pagamenti || []).filter(p => String(p.id) !== String(id)); avvisa();
+}

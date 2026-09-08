@@ -121,6 +121,39 @@ async function main(){
     prova('la spunta appena fatta compare nel registro', document.body.innerHTML.includes('segnato come fatto'));
   }
 
+  // modulo pagamenti: registrazione e calcolo del conto
+  click(q('[data-modulo="pulizie"]'));
+  await new Promise(r => setTimeout(r, 60));
+  click(q('[data-sezione="pagamenti"]'));
+  await new Promise(r => setTimeout(r, 80));
+  prova('la vista pagamenti mostra il blocco di Lucia', document.body.innerHTML.includes('Lucia'));
+  prova('la frase del conto compare (a debito o a credito)',
+    /a debito di|a credito di|conto in pari/.test(document.body.innerHTML));
+  prova('c\'è il pulsante per registrare un pagamento', !!q('[data-nuovo-pag]'));
+
+  click(q('[data-nuovo-pag]'));
+  await new Promise(r => setTimeout(r, 80));
+  prova('il modale nuovo pagamento si apre', q('#velo2').className.includes('on'));
+  q('#foglio2-campi [data-campo="importo"]').value = '40';
+  q('#foglio2-campi [data-campo="nota"]').value = 'Pagamento di prova';
+  click(q('#foglio2-conferma'));
+  await new Promise(r => setTimeout(r, 100));
+  prova('il nuovo pagamento compare nello storico', document.body.innerHTML.includes('Pagamento di prova'));
+
+  // modifica della tariffa oraria dalle impostazioni
+  click(q('[data-sezione="impostazioni"]'));
+  await new Promise(r => setTimeout(r, 60));
+  const campoTariffa = q('[data-persona-tariffa]');
+  prova('il campo tariffa oraria esiste nelle impostazioni', !!campoTariffa);
+  if (campoTariffa) {
+    campoTariffa.value = '15';
+    click(q('[data-salva-tariffa]'));
+    await new Promise(r => setTimeout(r, 80));
+    click(q('[data-sezione="pagamenti"]'));
+    await new Promise(r => setTimeout(r, 80));
+    prova('la nuova tariffa è visibile nel conto', document.body.innerHTML.includes('15 €/ora'));
+  }
+
   console.log('');
   let falliti = 0;
   for (const r of risultati) {
@@ -131,5 +164,4 @@ async function main(){
   console.log(risultati.length + ' controlli, ' + falliti + ' falliti');
   process.exit(falliti ? 1 : 0);
 }
-
 main().catch(e => { console.error('ERRORE NEL TEST:', e); process.exit(1); });

@@ -91,11 +91,11 @@ export function demo(settimana = iso(lunedi())){
     settimana,
     aggiornato: new Date().toISOString(),
     persone: [
-      { id:'davide', nome:'Davide', iniziali:'DA', ruolo:'adulto', colore:'#3D5BA9' },
-      { id:'vivien', nome:'Vivien', iniziali:'VI', ruolo:'adulto', colore:'#2F7D6D' },
-      { id:'amelie', nome:'Amelie', iniziali:'AM', ruolo:'bambina', colore:'#B9741F' },
-      { id:'maddie', nome:'Maddie', iniziali:'MA', ruolo:'bambina', colore:'#9C3A5E' },
-      { id:'collab', nome:'Collaboratrice', iniziali:'CO', ruolo:'collaboratrice', colore:'#6E7A83' }
+      { id:'davide', nome:'Davide', iniziali:'DA', ruolo:'adulto', colore:'#3D5BA9', tariffa_oraria:0 },
+      { id:'vivien', nome:'Vivien', iniziali:'VI', ruolo:'adulto', colore:'#2F7D6D', tariffa_oraria:0 },
+      { id:'amelie', nome:'Amelie', iniziali:'AM', ruolo:'bambina', colore:'#B9741F', tariffa_oraria:0 },
+      { id:'maddie', nome:'Maddie', iniziali:'MA', ruolo:'bambina', colore:'#9C3A5E', tariffa_oraria:0 },
+      { id:'collab', nome:'Lucia', iniziali:'LU', ruolo:'collaboratrice', colore:'#6E7A83', tariffa_oraria:12 }
     ],
     moduli: [
       { id:'pulizie', nome:'Pulizie', colore:'#2F7D6D', ordine:1 },
@@ -137,9 +137,9 @@ export function demo(settimana = iso(lunedi())){
         { voce_id:'v16', settimana, stato:'fatto', data:g(-1), persona_id:'collab' }
       ],
       ore: [
-        { id:1, persona_id:'collab', data:g(-8), ora_inizio:'09:00', ora_fine:'12:30', ore:3.5 },
-        { id:2, persona_id:'collab', data:g(-4), ora_inizio:'09:00', ora_fine:'12:00', ore:3 },
-        { id:3, persona_id:'collab', data:g(-1), ora_inizio:'09:00', ora_fine:'12:30', ore:3.5 }
+        { id:1, persona_id:'collab', data:g(-8), ora_inizio:'09:00', ora_fine:'12:30', ore:3.5, tariffa_oraria:12 },
+        { id:2, persona_id:'collab', data:g(-4), ora_inizio:'09:00', ora_fine:'12:00', ore:3, tariffa_oraria:12 },
+        { id:3, persona_id:'collab', data:g(-1), ora_inizio:'09:00', ora_fine:'12:30', ore:3.5, tariffa_oraria:12 }
       ]
     },
     biancheria: BIANC.map(([id, nome, ogni_giorni, ult, persona_id, scorta, scorta_minima], i) =>
@@ -154,9 +154,13 @@ export function demo(settimana = iso(lunedi())){
     eventi: EVENTI.map(([id, titolo, calendario, giorno, ora, persona_id]) =>
       ({ id, titolo, calendario, inizio: iso(piu(lun, giorno)) + 'T' + ora, persona_id })),
     registro: [
-      { modulo:'pulizie', azione:'fatto', dettaglio:'Bagno e sanitari', persona_id:'collab', persona_nome:'Collaboratrice', creato_il: new Date(Date.now()-3600e3).toISOString() },
+      { modulo:'pulizie', azione:'fatto', dettaglio:'Bagno e sanitari', persona_id:'collab', persona_nome:'Lucia', creato_il: new Date(Date.now()-3600e3).toISOString() },
       { modulo:'spesa', azione:'aggiunto', dettaglio:'Pannolini taglia 5', persona_id:'vivien', persona_nome:'Vivien', creato_il: new Date(Date.now()-7200e3).toISOString() },
-      { modulo:'pulizie', azione:'cambio biancheria', dettaglio:'b02', persona_id:'collab', persona_nome:'Collaboratrice', creato_il: new Date(Date.now()-86000e3).toISOString() }
+      { modulo:'pulizie', azione:'cambio biancheria', dettaglio:'b02', persona_id:'collab', persona_nome:'Lucia', creato_il: new Date(Date.now()-86000e3).toISOString() }
+    ],
+    pagamenti: [
+      { id:1, persona_id:'collab', data:g(-8), importo:40, nota:'Contanti, prima settimana' },
+      { id:2, persona_id:'collab', data:g(-1), importo:40, nota:'Bonifico' }
     ]
   };
 }
