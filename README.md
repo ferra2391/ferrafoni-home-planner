@@ -43,6 +43,11 @@ funzioni nuove, non serve rifare schema e seed da capo — cancellerebbero i dat
 che hai già inserito. Ogni volta che aggiungo tabelle nuove ti indico un file
 di migrazione a parte, con un nome tipo `migrazione-qualcosa.sql`.
 
+Le migrazioni disponibili, da eseguire in quest'ordine se non le hai ancora fatte:
+
+1. `migrazione-pagamenti-console.sql` — tariffa oraria e storico pagamenti
+2. `migrazione-note-console.sql` — note libere per chi pulisce
+
 Il modulo pagamenti, per esempio, usa `migrazione-pagamenti-console.sql`:
 copialo nella Console di D1 su Cloudflare (stessa procedura di schema e seed)
 ed eseguilo una volta sola. Aggiunge la tariffa oraria e lo storico dei

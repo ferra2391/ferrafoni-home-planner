@@ -179,7 +179,18 @@ CREATE TABLE IF NOT EXISTS eventi (
 );
 CREATE INDEX IF NOT EXISTS idx_eventi_inizio ON eventi(inizio);
 
--- ---------- 6. Registro attività (chi ha fatto cosa) ----------
+-- ---------- 6. Note libere ----------
+
+CREATE TABLE IF NOT EXISTS note (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  modulo      TEXT NOT NULL DEFAULT 'pulizie',
+  testo       TEXT NOT NULL,
+  persona_id  TEXT REFERENCES persone(id),
+  creato_il   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_note_modulo ON note(modulo, creato_il);
+
+-- ---------- 7. Registro attività (chi ha fatto cosa) ----------
 
 CREATE TABLE IF NOT EXISTS registro (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,

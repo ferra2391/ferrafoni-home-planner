@@ -15,6 +15,10 @@ const FREQ = {
 
 const aperti = new Set();
 let primaVolta = true;
+let meseScelto = null;   // AAAA-MM della vista Ore e storico
+
+const MESI = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio',
+              'agosto','settembre','ottobre','novembre','dicembre'];
 
 /* ---------- checklist ---------- */
 
@@ -41,18 +45,20 @@ function compito(v){
   const stato = s?.stato;
   const scaduto = !stato && v.frequenza === 'settimanale' && scarto(piu(new Date(S.S.settimana + 'T00:00:00'), 6)) < 0;
 
-  const timbro = s
+  const timbro = (s && (stato === 'fatto' || stato === 'parziale'))
     ? `<b>${gm(s.data)}</b>${esc(S.nomePersona(s.persona_id))}`
     : `<span style="color:var(--tenue-chiaro)">nessuna data</span>`;
 
   return `
   <div class="compito ${stato === 'fatto' ? 'fatto' : ''} ${scaduto ? 'scaduto' : ''}">
     <span class="emj">${v.icona || '•'}</span>
-    <span class="tx"><strong>${esc(v.nome)}</strong><span>${FREQ[v.frequenza] || v.frequenza}</span></span>
+    <span class="tx"><strong>${esc(v.nome)}</strong><span>${FREQ[v.frequenza] || v.frequenza}</span>
+      ${s?.nota ? `<span class="nota-voce">${esc(s.nota)}</span>` : ''}</span>
     <button class="quando" data-data="${v.id}">${timbro}</button>
     <span class="segna">
       <button data-segna="fatto" data-voce="${v.id}" class="${stato === 'fatto' ? 'f-on' : ''}">Fatto</button>
       <button data-segna="parziale" data-voce="${v.id}" class="${stato === 'parziale' ? 'p-on' : ''}">Parziale</button>
+      <button data-nota-voce="${v.id}" class="${s?.nota ? 'n-on' : ''}">Note</button>
     </span>
   </div>`;
 }
@@ -79,6 +85,54 @@ function barraSettimana(){
   </div>`;
 }
 
+function bannerConto(){
+  const lucia = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice');
+  if (!lucia) return '';
+  const conto = S.contoPersona(lucia.id);
+  const d = conto.differenza;
+  const inPari = Math.abs(d) < 0.005;
+
+  const colore = inPari || d > 0 ? 'var(--verde)' : 'var(--rosso)';
+  const fondo  = inPari || d > 0 ? '#E4F1EB' : 'var(--rosso-fondo)';
+  const testo = inPari
+    ? lucia.nome + ': conto in pari'
+    : d > 0
+      ? lucia.nome + ' e a debito di ' + d.toFixed(2).replace('.', ',') + ' EUR'
+      : lucia.nome + ' e a credito di ' + Math.abs(d).toFixed(2).replace('.', ',') + ' EUR';
+  const sotto = inPari
+    ? 'Pagato esattamente quanto dovuto'
+    : d > 0
+      ? 'Ha ricevuto in piu, si scala dal prossimo pagamento'
+      : 'Le devi ancora questa cifra';
+
+  return `<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;
+    background:${fondo};border-bottom:1px solid var(--linea-tenue)">
+    <span style="font-size:1.2rem">${inPari ? '\u2705' : d > 0 ? '\u{1F4B6}' : '\u{1F514}'}</span>
+    <span style="flex:1;min-width:0">
+      <b style="display:block;font-size:.94rem;color:${colore}">${esc(testo)}</b>
+      <span style="font-size:.79rem;color:var(--tenue)">${esc(sotto)}</span></span>
+  </div>`;
+}
+
+function cardNote(){
+  const lista = S.note('pulizie');
+  return riq('Note per chi pulisce',
+    (lista.length ? lista.map(n => `
+      <div class="log-riga">
+        <span class="log-punto" style="--c:${COLORE}"></span>
+        <span class="tx"><strong>${esc(n.testo)}</strong></span>
+        <div class="riga-azioni">
+          <button data-mod-nota="${n.id}" title="Modifica">&#9998;</button>
+          <button data-elimina-nota="${n.id}" title="Elimina" style="color:var(--rosso)">&#128465;</button>
+        </div>
+      </div>`).join('') : `<p class="vuoto">Nessuna nota</p>`) +
+    `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue);display:flex;gap:9px">
+       <input type="text" id="nuova-nota" placeholder="Scrivi una nota..." style="flex:1;min-width:0">
+       <button class="btn" style="background:${COLORE}" data-aggiungi-nota>Aggiungi</button>
+     </div>`,
+    { raso: true, meta: lista.length ? lista.length + ' note' : '' });
+}
+
 function vistaChecklist(){
   const cats = S.categorie('pulizie');
   const voci = S.S.dati.pulizie.voci;
@@ -96,115 +150,81 @@ function vistaChecklist(){
     <div class="griglia g-lato">
       ${riq('Checklist della settimana',
         cats.map(c => gruppo(c, voci.filter(v => v.categoria_id === c.id))).join(''),
-        { raso: true, classe: 'tinta', colore: COLORE, meta: 'tocca Fatto o Parziale, la data si registra da sola' })}
+        { raso: true, classe: 'tinta', colore: COLORE, meta: 'ogni spunta chiede la data' })}
       <div class="griglia" style="align-content:start">
         ${riq('Giorni lavorati',
+          bannerConto() +
           tabella(['Giorno', 'Orario', 'Ore'],
             ore.length ? ore.map(o => `<tr><td>${esc(new Date(o.data).toLocaleDateString('it-IT',{weekday:'long',day:'numeric'}))}</td>
-              <td class="num">${esc(o.ora_inizio || '')} – ${esc(o.ora_fine || '')}</td>
+              <td class="num">${esc(o.ora_inizio || '')} - ${esc(o.ora_fine || '')}</td>
               <td class="num">${String(o.ore).replace('.', ',')}</td></tr>`)
               : [`<tr><td colspan="3">${vuoto('Nessuna giornata registrata')}</td></tr>`]) +
           `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
              <button class="btn chiaro pieno" data-nuova-giornata>Aggiungi giornata</button></div>`,
           { raso: true, meta: String(totale).replace('.', ',') + ' ore questa settimana' })}
-        ${riq('Note per chi pulisce', `<ul class="righe" style="margin:-16px -18px">
-          <li><span class="tx"><strong>Lenzuola nell'armadio del corridoio</strong><span>Seconda anta, ripiano alto</span></span></li>
-          <li><span class="tx"><strong>Niente candeggina in cucina</strong><span>Solo detergente neutro sul piano in legno</span></span></li>
-          <li><span class="tx"><strong>Camera di Maddie dopo le 15:00</strong><span>Riposino fino alle 14:45</span></span></li>
-        </ul>`)}
+        ${cardNote()}
       </div>
     </div>`;
-}
-
-/* ---------- biancheria ---------- */
-
-function vistaBiancheria(){
-  const lista = S.biancheriaConScadenza();
-  const righe = lista.map(b => `
-    <tr>
-      <td><b>${esc(b.nome)}</b><span class="sm">${esc(S.nomePersona(b.persona_id))}</span></td>
-      <td>${b.ogni_giorni === 7 ? 'settimana' : b.ogni_giorni === 14 ? '2 settimane' : b.ogni_giorni + ' giorni'}</td>
-      <td class="num">${gm(b.ultimo_cambio)}</td>
-      <td><span class="pill ${b.etichetta.classe}">${esc(b.etichetta.testo)}</span></td>
-      <td style="text-align:right">
-        <div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
-          <button class="btn piccolo" style="background:var(--pulizie)" data-cambio="${b.id}">Cambiato</button>
-          <button data-storico="${b.id}" title="Storico">🕐</button>
-          <button data-mod-bianc="${b.id}" title="Modifica">✎</button>
-        </div>
-      </td>
-    </tr>`);
-
-  const scorte = lista.filter(b => b.scorta <= b.scorta_minima);
-
-  return `<div class="griglia g-lato">
-    ${riq('Cambi biancheria', tabella(['Cosa', 'Ogni', 'Ultimo cambio', 'Stato', ''], righe) +
-        `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
-           <button class="btn chiaro pieno" data-nuovo-bianc>Aggiungi articolo</button></div>`,
-      { raso: true, classe: 'tinta', colore: COLORE, meta: 'in rosso quelli da fare adesso' })}
-    <div class="griglia" style="align-content:start">
-      ${riq('Scorte in armadio', lista.slice(0, 6).map(b => `
-        <div style="margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;font-size:.86rem;margin-bottom:6px">
-            <span>${esc(b.nome)}</span><span style="color:var(--tenue)">${b.scorta}</span></div>
-          ${barra(Math.min(100, b.scorta / Math.max(1, b.scorta_minima * 2) * 100),
-                  b.scorta <= b.scorta_minima ? 'var(--rosso)' : COLORE)}
-        </div>`).join('') +
-        (scorte.length ? `<p class="nota">${plurale(scorte.length, 'articolo è', 'articoli sono')} sotto scorta e ${scorte.length === 1 ? 'entra' : 'entrano'} da solo in lista della spesa.</p>` : ''))}
-      <div id="storico-bianc"></div>
-    </div>
-  </div>`;
-}
-
-function vistaStoricoBiancheria(b, cambi){
-  return riq('Storico · ' + b.nome, cambi.length
-    ? cambi.map(c => `
-      <div class="log-riga">
-        <span class="log-punto" style="--c:var(--pulizie)"></span>
-        <span class="tx"><strong>${gm(c.data)}</strong><span>${esc(c.persona_nome || 'senza nome')}</span></span>
-        <button data-elimina-cambio="${c.id}" style="color:var(--rosso);font-size:.85rem">Togli</button>
-      </div>`).join('')
-    : vuoto('Nessun cambio registrato ancora'),
-    { raso: true, classe: 'tinta', colore: COLORE });
 }
 
 /* ---------- ore e storico ---------- */
 
 function vistaOre(){
-  const ore = S.S.dati.pulizie.ore;
-  const mese = ore.filter(o => o.data.slice(0, 7) === iso(OGGI).slice(0, 7));
-  const totMese = mese.reduce((s, o) => s + o.ore, 0);
+  const ore = S.S.dati.pulizie.ore
+    .filter(o => o.data.slice(0, 7) === meseScelto)
+    .sort((a, b) => b.data.localeCompare(a.data));
+  const totMese = ore.reduce((s, o) => s + o.ore, 0);
   const lucia = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice');
   const conto = lucia ? S.contoPersona(lucia.id) : null;
 
-  return `<div class="griglia g-lato">
-    ${riq('Registro giornate', tabella(['Giorno', 'Orario', 'Ore', 'Chi', ''],
-      ore.map(o => `<tr>
-        <td>${esc(new Date(o.data).toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long' }))}</td>
-        <td class="num">${esc(o.ora_inizio || '')} – ${esc(o.ora_fine || '')}</td>
-        <td class="num">${String(o.ore).replace('.', ',')}</td>
-        <td>${esc(S.nomePersona(o.persona_id))}</td>
-        <td style="text-align:right"><div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
-          <button data-mod-ore="${o.id}" title="Modifica">✎</button>
-          <button data-elimina-ore="${o.id}" title="Elimina" style="color:var(--rosso)">🗑</button>
-        </div></td></tr>`)),
-      { raso: true, classe: 'tinta', colore: COLORE, meta: 'ultimi due mesi, anche passati si possono correggere' })}
-    <div class="griglia" style="align-content:start">
-      ${riq('Questo mese', `
-        <div style="display:flex;align-items:center;gap:18px">
-          <div><b style="font-size:2.2rem;letter-spacing:-.04em;color:var(--pulizie)">${String(totMese).replace('.', ',')}</b>
-          <span class="occhiello" style="display:block">ore lavorate</span></div>
-          <div><b style="font-size:2.2rem;letter-spacing:-.04em;color:var(--pulizie)">${mese.length}</b>
-          <span class="occhiello" style="display:block">giornate</span></div>
-        </div>
-        <p class="nota">Il totale si aggiorna a ogni giornata registrata dalla checklist.</p>`)}
-      ${conto ? riq('Conto con ' + lucia.nome, `
-        <p style="margin:0 0 12px;font-size:.92rem">${fraseConto(lucia.nome, conto.differenza).testo}</p>
-        <p class="nota" style="margin:0 0 14px">${fraseConto(lucia.nome, conto.differenza).sotto}</p>
-        <button class="btn chiaro pieno" data-vai-pagamenti>Vai ai pagamenti</button>
-      `) : ''}
+  const [anno, mm] = meseScelto.split('-').map(Number);
+  const nomeMese = MESI[mm - 1] + ' ' + anno;
+  const corrente = meseScelto === iso(OGGI).slice(0, 7);
+
+  return `
+    <div class="settimana-barra">
+      <button class="nav" data-mese="-1" aria-label="Mese precedente">&lsaquo;</button>
+      <button class="nav" data-mese="1" aria-label="Mese successivo">&rsaquo;</button>
+      <span class="et">
+        <b>${nomeMese}</b>
+        <span>${ore.length ? ore.length + (ore.length === 1 ? ' giornata' : ' giornate') + ' registrate' : 'nessuna giornata'}
+        &middot; ${String(totMese).replace('.', ',')} ore</span>
+      </span>
+      ${corrente ? '' : '<button class="btn chiaro piccolo" data-mese="0">Torna a questo mese</button>'}
     </div>
-  </div>`;
+
+    <div class="griglia g-lato">
+      ${riq('Registro giornate', tabella(['Giorno', 'Orario', 'Ore', 'Chi', ''],
+        ore.length ? ore.map(o => `<tr>
+          <td>${esc(new Date(o.data).toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long' }))}</td>
+          <td class="num">${esc(o.ora_inizio || '')} - ${esc(o.ora_fine || '')}</td>
+          <td class="num">${String(o.ore).replace('.', ',')}</td>
+          <td>${esc(S.nomePersona(o.persona_id))}</td>
+          <td style="text-align:right"><div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
+            <button data-mod-ore="${o.id}" title="Modifica">&#9998;</button>
+            <button data-elimina-ore="${o.id}" title="Elimina" style="color:var(--rosso)">&#128465;</button>
+          </div></td></tr>`)
+          : [`<tr><td colspan="5">${vuoto('Nessuna giornata in questo mese')}</td></tr>`]),
+        { raso: true, classe: 'tinta', colore: COLORE, meta: 'anche le giornate passate si possono correggere' })}
+
+      <div class="griglia" style="align-content:start">
+        ${riq(nomeMese, `
+          <div style="display:flex;align-items:center;gap:22px">
+            <div><b style="font-size:2.2rem;letter-spacing:-.04em;color:var(--pulizie)">${String(totMese).replace('.', ',')}</b>
+            <span class="occhiello" style="display:block">ore lavorate</span></div>
+            <div><b style="font-size:2.2rem;letter-spacing:-.04em;color:var(--pulizie)">${ore.length}</b>
+            <span class="occhiello" style="display:block">giornate</span></div>
+            ${lucia && lucia.tariffa_oraria ? `<div><b style="font-size:2.2rem;letter-spacing:-.04em;color:var(--pulizie)">${(totMese * lucia.tariffa_oraria).toFixed(0)}</b>
+            <span class="occhiello" style="display:block">euro nel mese</span></div>` : ''}
+          </div>
+          <p class="nota">Usa le frecce in alto per scorrere i mesi passati.</p>`)}
+        ${conto ? riq('Conto con ' + lucia.nome, `
+          <p style="margin:0 0 12px;font-size:.92rem">${fraseConto(lucia.nome, conto.differenza).testo}</p>
+          <p class="nota" style="margin:0 0 14px">${fraseConto(lucia.nome, conto.differenza).sotto}</p>
+          <button class="btn chiaro pieno" data-vai-pagamenti>Vai ai pagamenti</button>
+        `) : ''}
+      </div>
+    </div>`;
 }
 
 /* ---------- impostazioni ---------- */
@@ -227,23 +247,24 @@ function vistaImpostazioni(){
               <span class="emj">${v.icona}</span>
               <span class="tx"><strong>${esc(v.nome)}</strong><span>${FREQ[v.frequenza]}</span></span>
               <div class="riga-azioni">
-                <button data-mod-voce="${v.id}" title="Modifica">✎</button>
-                <button data-elimina-voce="${v.id}" title="Togli dalla checklist" style="color:var(--rosso)">🗑</button>
+                <button data-mod-voce="${v.id}" title="Modifica">&#9998;</button>
+                <button data-elimina-voce="${v.id}" title="Togli dalla checklist" style="color:var(--rosso)">&#128465;</button>
               </div>
             </div>`).join('')}</div></div>
         </div>`).join('') +
         `<div style="padding:16px 18px;border-top:1px solid var(--linea-tenue)">
            <button class="btn chiaro pieno" data-nuova-voce>Aggiungi una voce</button>
-           <p class="nota">Ogni voce ha la sua frequenza e la sua categoria. Cambiandole si aggiorna anche la prossima scadenza in home.</p>
+           <p class="nota">Ogni voce ha la sua frequenza e la sua zona. La frequenza decide quando la voce
+           torna a essere da fare e quando compare in rosso nella home.</p>
          </div>`,
         { raso: true, classe: 'tinta', colore: COLORE, meta: voci.length + ' voci attive' })}
 
       ${riq('Come funziona la checklist', `<ul class="cfg" style="margin:-16px -18px">
-        ${rigaCfg('La settimana inizia', '', `<select><option selected>Lunedì</option><option>Domenica</option></select>`)}
-        ${rigaCfg('Registra la data quando spunto', 'Alla prima spunta salva la data di oggi, modificabile con un tocco.', interruttore(true, COLORE))}
+        ${rigaCfg('La settimana inizia', '', `<select><option selected>Lunedi</option><option>Domenica</option></select>`)}
+        ${rigaCfg('Chiedi sempre la data quando spunto', 'Ogni Fatto o Parziale apre la scelta del giorno.', interruttore(true, COLORE))}
         ${rigaCfg('Chiedi chi ha fatto la lavorazione', 'Mostra la scelta tra le persone di casa e chi viene a pulire.', interruttore(true, COLORE))}
         ${rigaCfg('Riporta le voci non fatte', 'Restano nella settimana nuova segnalate in rosso.', interruttore(true, COLORE))}
-        ${rigaCfg('Blocca le settimane passate', 'Dopo la domenica lo storico non è più modificabile.', interruttore(false, COLORE))}
+        ${rigaCfg('Blocca le settimane passate', 'Dopo la domenica lo storico non e piu modificabile.', interruttore(false, COLORE))}
       </ul>`)}
     </div>
 
@@ -251,26 +272,22 @@ function vistaImpostazioni(){
       ${riq('Chi pulisce', `<ul class="cfg" style="margin:-16px -18px">
         ${lucia ? `
         ${rigaCfg('Nome', 'Compare accanto a ogni spunta e nel modulo pagamenti.', `<input type="text" data-persona-nome="${lucia.id}" value="${esc(lucia.nome)}" style="min-width:170px">`)}
-        ${rigaCfg('Tariffa oraria', 'Usata per calcolare quanto è dovuto in base alle ore lavorate.', `<div style="display:flex;align-items:center;gap:8px"><input type="number" min="0" step="0.5" data-persona-tariffa="${lucia.id}" value="${lucia.tariffa_oraria || 0}" style="min-width:90px"><span style="color:var(--tenue)">€/ora</span></div>`)}
+        ${rigaCfg('Tariffa oraria', 'Usata per calcolare quanto e dovuto in base alle ore lavorate.', `<div style="display:flex;align-items:center;gap:8px"><input type="number" min="0" step="0.5" data-persona-tariffa="${lucia.id}" value="${lucia.tariffa_oraria || 0}" style="min-width:90px"><span style="color:var(--tenue)">euro/ora</span></div>`)}
         ` : `<li><span class="tx"><span>Nessuna persona con ruolo "chi pulisce". Aggiungila da Casa e famiglia.</span></span></li>`}
-        ${rigaCfg('Giorni di servizio', '', `<select><option selected>Lunedì e giovedì</option><option>Solo lunedì</option><option>Tre volte a settimana</option></select>`)}
-        ${rigaCfg('Orario abituale', '', `<input type="time" value="09:00" style="min-width:120px">`)}
-        ${rigaCfg('Registra le ore lavorate', 'Tabella giorno, orario e ore con totale mensile.', interruttore(true, COLORE))}
-        ${rigaCfg('Vista semplificata', 'Solo checklist e ore, senza calendario, spesa e attività.', interruttore(true, COLORE))}
+        ${rigaCfg('Registra le ore lavorate', 'Tabella giorno, orario e ore, con navigazione fra i mesi.', interruttore(true, COLORE))}
+        ${rigaCfg('Vista semplificata', 'Solo checklist e ore, senza calendario, spesa e attivita.', interruttore(true, COLORE))}
       </ul>
       ${lucia ? `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
         <button class="btn chiaro pieno" data-salva-tariffa="${lucia.id}">Salva nome e tariffa</button>
       </div>` : ''}`)}
+
       ${riq('Promemoria', `<ul class="cfg" style="margin:-16px -18px">
-        ${rigaCfg('Avviso il mattino del servizio', 'Alle 08:00.', interruttore(true, COLORE))}
         ${rigaCfg('Segnala le voci scadute', 'Compaiono in rosso nel riquadro della home.', interruttore(true, COLORE))}
         ${rigaCfg('Riepilogo della domenica sera', '', interruttore(true, COLORE))}
       </ul>`)}
     </div>
   </div>`;
 }
-
-/* ---------- modulo ---------- */
 
 /* ---------- pagamenti ---------- */
 
@@ -344,7 +361,6 @@ export default {
   colore: COLORE,
   sezioni: [
     { id: 'checklist', nome: 'Checklist' },
-    { id: 'biancheria', nome: 'Biancheria' },
     { id: 'ore', nome: 'Ore e storico' },
     { id: 'pagamenti', nome: 'Pagamenti' },
     { id: 'impostazioni', nome: 'Impostazioni' }
@@ -356,7 +372,7 @@ export default {
   },
 
   render(sezione){
-    if (sezione === 'biancheria') return vistaBiancheria();
+    if (meseScelto === null) meseScelto = iso(OGGI).slice(0, 7);
     if (sezione === 'ore') return vistaOre();
     if (sezione === 'pagamenti') return vistaPagamenti();
     if (sezione === 'impostazioni') return vistaImpostazioni();
@@ -373,6 +389,20 @@ export default {
         return;
       }
 
+      const ms = e.target.closest('[data-mese]');
+      if (ms) {
+        const n = parseInt(ms.dataset.mese, 10);
+        if (n === 0) {
+          meseScelto = iso(OGGI).slice(0, 7);
+        } else {
+          const [a, m] = meseScelto.split('-').map(Number);
+          const d = new Date(a, m - 1 + n, 1);
+          meseScelto = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        }
+        contesto.ridisegna();
+        return;
+      }
+
       const sett = e.target.closest('[data-sett]');
       if (sett) {
         const n = parseInt(sett.dataset.sett, 10);
@@ -385,18 +415,66 @@ export default {
       if (seg) {
         const voce = seg.dataset.voce, tipo = seg.dataset.segna;
         const attuale = S.spunta(voce);
+        const v = S.S.dati.pulizie.voci.find(x => x.id === voce);
+
+        // Se tocco di nuovo lo stato gia attivo, tolgo la spunta senza chiedere altro.
         if (attuale?.stato === tipo) {
           S.applicaSpunta(voce, null);
           prova(api.togliSpunta(voce, S.S.settimana));
-        } else {
-          const chi = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice')?.id || 'vivien';
-          const nomeVoce = S.S.dati.pulizie.voci.find(v => v.id === voce)?.nome || voce;
-          S.applicaSpunta(voce, tipo, OGGI, chi);
-          S.aggiungiRegistroLocale('pulizie', tipo, nomeVoce, chi);
-          prova(api.spuntaPulizia({ voce_id: voce, settimana: S.S.settimana, stato: tipo,
-                                    data: iso(OGGI), persona_id: chi }));
-          avviso(tipo === 'fatto' ? 'Segnato come fatto oggi' : 'Segnato come parziale');
+          avviso('Spunta tolta');
+          return;
         }
+
+        // Altrimenti chiedo sempre quando e stata fatta: niente data automatica.
+        const r = await modaleData({
+          titolo: v?.nome || voce,
+          sottotitolo: tipo === 'fatto'
+            ? 'Quando e stata completata?'
+            : 'Quando e stata iniziata?',
+          persone: S.S.dati.persone.filter(p => p.ruolo !== 'bambina'),
+          personaScelta: attuale?.persona_id || S.S.dati.persone.find(p => p.ruolo === 'collaboratrice')?.id,
+          mostraTogli: !!attuale
+        });
+        if (!r) return;
+
+        if (r.azione === 'togli') {
+          S.applicaSpunta(voce, null);
+          prova(api.togliSpunta(voce, S.S.settimana));
+          avviso('Spunta tolta');
+          return;
+        }
+
+        S.applicaSpunta(voce, tipo, r.data, r.persona);
+        S.aggiungiRegistroLocale('pulizie', tipo, v?.nome || voce, r.persona);
+        prova(api.spuntaPulizia({ voce_id: voce, settimana: S.S.settimana, stato: tipo,
+                                  data: iso(r.data), persona_id: r.persona }));
+        avviso((tipo === 'fatto' ? 'Fatto il ' : 'Parziale dal ') + gm(r.data));
+        return;
+      }
+
+      // Nota su una singola voce di checklist
+      const nv = e.target.closest('[data-nota-voce]');
+      if (nv) {
+        const voce = nv.dataset.notaVoce;
+        const v = S.S.dati.pulizie.voci.find(x => x.id === voce);
+        const attuale = S.spunta(voce);
+        const r = await modaleForm({
+          titolo: 'Nota su: ' + (v?.nome || voce), colore: COLORE,
+          sottotitolo: 'Resta scritta sotto la voce per tutta la settimana.',
+          valori: { nota: attuale?.nota || '' },
+          campi: [{ nome:'nota', etichetta:'La nota', tipo:'testolungo',
+                    placeholder:'Es. manca il detergente, rifatto solo meta' }],
+          permettiElimina: !!attuale?.nota
+        });
+        if (!r) return;
+
+        const testo = r.azione === 'elimina' ? '' : (r.valori.nota || '').trim();
+        S.applicaNotaVoce(voce, testo);
+        prova(api.spuntaPulizia({ voce_id: voce, settimana: S.S.settimana,
+                                  stato: attuale?.stato || 'nota', nota: testo || null,
+                                  data: iso(attuale ? new Date(attuale.data) : OGGI),
+                                  persona_id: attuale?.persona_id || null }));
+        avviso(testo ? 'Nota salvata' : 'Nota tolta');
         return;
       }
 
@@ -426,29 +504,77 @@ export default {
         return;
       }
 
-      const cb = e.target.closest('[data-cambio]');
-      if (cb) {
-        const b = S.S.dati.biancheria.find(x => x.id === cb.dataset.cambio);
-        const r = await modaleData({
-          titolo: b.nome, sottotitolo: 'Quando è stato fatto il cambio?',
-          persone: S.S.dati.persone.filter(p => p.ruolo !== 'bambina'),
-          personaScelta: b.persona_id, mostraTogli: false
+      // Aggiungi giornata: chiede giorno e orario, poi calcola le ore da sola
+      if (e.target.closest('[data-nuova-giornata]')) {
+        const opzChi = S.S.dati.persone.filter(p => p.ruolo !== 'bambina')
+          .map(p => ({ id: p.id, nome: p.nome }));
+        const r = await modaleForm({
+          titolo: 'Aggiungi una giornata lavorata', colore: COLORE,
+          sottotitolo: 'Le ore vengono calcolate dall orario di inizio e fine.',
+          valori: { data: iso(OGGI), ora_inizio: '09:00', ora_fine: '12:00',
+                    persona_id: S.S.dati.persone.find(p => p.ruolo === 'collaboratrice')?.id || '' },
+          campi: [
+            { nome:'data', etichetta:'Giorno', tipo:'data', richiesto:true },
+            { nome:'ora_inizio', etichetta:'Ora di inizio', tipo:'ora', richiesto:true },
+            { nome:'ora_fine', etichetta:'Ora di fine', tipo:'ora', richiesto:true },
+            { nome:'persona_id', etichetta:'Chi ha lavorato', tipo:'select', opzioni: opzChi }
+          ]
         });
-        if (!r || r.azione !== 'segna') return;
-        S.applicaCambioBiancheria(b.id, r.data);
-        S.aggiungiRegistroLocale('pulizie', 'cambio biancheria', b.nome, r.persona);
-        prova(api.cambioBiancheria({ id: b.id, data: iso(r.data), persona_id: r.persona }));
-        avviso(b.nome + ' aggiornato al ' + gm(r.data));
+        if (!r || r.azione !== 'salva') return;
+
+        const { data, ora_inizio, ora_fine, persona_id } = r.valori;
+        if (!data || !ora_inizio || !ora_fine) { avviso('Servono giorno, inizio e fine'); return; }
+
+        const min = t => parseInt(t.slice(0,2),10) * 60 + parseInt(t.slice(3,5),10);
+        const ore = Math.round((min(ora_fine) - min(ora_inizio)) / 6) / 10;
+        if (ore <= 0) { avviso('L orario di fine deve venire dopo quello di inizio'); return; }
+
+        const persona = S.persona(persona_id);
+        S.S.dati.pulizie.ore.unshift({ id: 'loc' + Date.now(), persona_id,
+          data, ora_inizio, ora_fine, ore, tariffa_oraria: persona?.tariffa_oraria ?? null });
+        prova(api.aggiungiOre({ data, ora_inizio, ora_fine, persona_id }));
+        S.avvisa();
+        avviso('Giornata aggiunta: ' + String(ore).replace('.', ',') + ' ore');
         return;
       }
 
-      if (e.target.closest('[data-nuova-giornata]')) {
-        const chi = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice')?.id;
-        S.S.dati.pulizie.ore.unshift({ id: 'loc' + Date.now(), persona_id: chi,
-          data: iso(OGGI), ora_inizio: '09:00', ora_fine: '12:00', ore: 3 });
-        prova(api.aggiungiOre({ data: iso(OGGI), ora_inizio: '09:00', ora_fine: '12:00', persona_id: chi }));
-        S.avvisa();
-        avviso('Giornata di oggi aggiunta, 3 ore');
+      /* ---- note libere per chi pulisce ---- */
+      if (e.target.closest('[data-aggiungi-nota]')) {
+        const campo = root.querySelector('#nuova-nota');
+        const testo = (campo?.value || '').trim();
+        if (!testo) { avviso('Scrivi prima la nota'); return; }
+        S.aggiungiNotaLocale({ id: 'loc' + Date.now(), modulo: 'pulizie', testo,
+                               creato_il: new Date().toISOString() });
+        prova(api.creaNota({ modulo: 'pulizie', testo }));
+        avviso('Nota aggiunta');
+        return;
+      }
+
+      const modNota = e.target.closest('[data-mod-nota]');
+      if (modNota) {
+        const n = S.note('pulizie').find(x => String(x.id) === modNota.dataset.modNota);
+        const r = await modaleForm({
+          titolo: 'Modifica la nota', colore: COLORE, permettiElimina: true,
+          valori: { testo: n.testo },
+          campi: [{ nome:'testo', etichetta:'Testo della nota', tipo:'testolungo', richiesto:true }]
+        });
+        if (r?.azione === 'salva' && r.valori.testo.trim()) {
+          S.modificaNotaLocale(n.id, r.valori.testo.trim());
+          prova(api.modificaNota({ id: n.id, testo: r.valori.testo.trim() }));
+          avviso('Nota aggiornata');
+        } else if (r?.azione === 'elimina') {
+          S.rimuoviNotaLocale(n.id);
+          prova(api.eliminaNota(n.id));
+          avviso('Nota eliminata');
+        }
+        return;
+      }
+
+      const elNota = e.target.closest('[data-elimina-nota]');
+      if (elNota) {
+        S.rimuoviNotaLocale(elNota.dataset.eliminaNota);
+        prova(api.eliminaNota(elNota.dataset.eliminaNota));
+        avviso('Nota eliminata');
         return;
       }
 
@@ -506,74 +632,6 @@ export default {
         S.rimuoviVoceLocale(elVoce.dataset.eliminaVoce);
         prova(api.eliminaVoce(elVoce.dataset.eliminaVoce));
         avviso('Voce tolta dalla checklist');
-        return;
-      }
-
-      /* ---- biancheria: nuovo articolo, modifica, storico ---- */
-      if (e.target.closest('[data-nuovo-bianc]')) {
-        const r = await modaleForm({
-          titolo: 'Nuovo articolo di biancheria', colore: COLORE,
-          campi: [
-            { nome:'nome', etichetta:'Nome', richiesto:true, placeholder:'Es. Federe cuscini' },
-            { nome:'ogni_giorni', etichetta:'Ogni quanti giorni si cambia', tipo:'numero', difetto:7, min:1 },
-            { nome:'persona_id', etichetta:'Chi se ne occupa di solito', tipo:'select', opzioni: opzPersone },
-            { nome:'scorta', etichetta:'Quanti pezzi in scorta', tipo:'numero', difetto:2, min:0 },
-            { nome:'scorta_minima', etichetta:'Scorta minima prima di riordinare', tipo:'numero', difetto:2, min:0 }
-          ]
-        });
-        if (r?.azione === 'salva' && r.valori.nome) {
-          const nuovo = { id:'loc'+Date.now(), ...r.valori, ultimo_cambio: iso(OGGI) };
-          S.aggiungiBiancheriaLocale(nuovo);
-          prova(api.salvaBiancheria({ ...r.valori, ultimo_cambio: iso(OGGI) }));
-          avviso('Articolo aggiunto');
-        }
-        return;
-      }
-
-      const modBianc = e.target.closest('[data-mod-bianc]');
-      if (modBianc) {
-        const b = S.S.dati.biancheria.find(x => x.id === modBianc.dataset.modBianc);
-        const r = await modaleForm({
-          titolo: b.nome, colore: COLORE, permettiElimina: true,
-          valori: { nome:b.nome, ogni_giorni:b.ogni_giorni, persona_id:b.persona_id || '', scorta:b.scorta, scorta_minima:b.scorta_minima },
-          campi: [
-            { nome:'nome', etichetta:'Nome', richiesto:true },
-            { nome:'ogni_giorni', etichetta:'Ogni quanti giorni', tipo:'numero', min:1 },
-            { nome:'persona_id', etichetta:'Chi se ne occupa', tipo:'select', opzioni: opzPersone },
-            { nome:'scorta', etichetta:'Pezzi in scorta', tipo:'numero', min:0 },
-            { nome:'scorta_minima', etichetta:'Scorta minima', tipo:'numero', min:0 }
-          ]
-        });
-        if (r?.azione === 'salva') {
-          S.modificaBiancheriaLocale(b.id, r.valori);
-          prova(api.salvaBiancheria({ id: b.id, ...r.valori }));
-          avviso('Articolo aggiornato');
-        } else if (r?.azione === 'elimina') {
-          S.rimuoviBiancheriaLocale(b.id);
-          prova(api.eliminaBiancheria(b.id));
-          avviso('Articolo tolto');
-        }
-        return;
-      }
-
-      const storico = e.target.closest('[data-storico]');
-      if (storico) {
-        const b = S.S.dati.biancheria.find(x => x.id === storico.dataset.storico);
-        const box = root.querySelector('#storico-bianc');
-        box.innerHTML = '<p class="vuoto">Carico lo storico…</p>';
-        try {
-          const r = await api.storicoBiancheria(b.id);
-          box.innerHTML = vistaStoricoBiancheria(b, r.cambi);
-        } catch { box.innerHTML = vistaStoricoBiancheria(b, []); }
-        box.scrollIntoView({ behavior:'smooth', block:'nearest' });
-        return;
-      }
-
-      const elCambio = e.target.closest('[data-elimina-cambio]');
-      if (elCambio) {
-        prova(api.eliminaCambioBiancheria(elCambio.dataset.eliminaCambio));
-        elCambio.closest('.log-riga').remove();
-        avviso('Cambio tolto dallo storico');
         return;
       }
 
@@ -668,6 +726,14 @@ export default {
       }
       if (e.target.closest('[data-vai-pagamenti]')) {
         contesto.vai('pulizie', 'pagamenti');
+      }
+    });
+
+    // Invio da tastiera nel campo della nota
+    root.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.id === 'nuova-nota') {
+        e.preventDefault();
+        root.querySelector('[data-aggiungi-nota]')?.click();
       }
     });
   }

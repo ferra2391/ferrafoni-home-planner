@@ -93,6 +93,11 @@ export const api = {
   modificaPagamento: d => chiama('/pagamenti', { method:'PATCH', body: JSON.stringify(d) }),
   eliminaPagamento: id => chiama('/pagamenti?id=' + id, { method:'DELETE' }),
 
+  // note libere
+  creaNota        : d => chiama('/note', { method:'POST', body: JSON.stringify(d) }),
+  modificaNota    : d => chiama('/note', { method:'PATCH', body: JSON.stringify(d) }),
+  eliminaNota     : id => chiama('/note?id=' + id, { method:'DELETE' }),
+
   // registro
   registro        : (modulo, limite) => chiama(`/registro?${modulo ? 'modulo='+modulo+'&' : ''}limite=${limite||80}`)
 };

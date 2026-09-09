@@ -67,7 +67,8 @@ export default {
 
   render(){
     const av = S.avanzamentoPulizie();
-    const bianc = S.biancheriaConScadenza();
+    const lucia = S.S.dati.persone.find(p => p.ruolo === 'collaboratrice');
+    const conto = lucia ? S.contoPersona(lucia.id) : null;
     const spesa = S.spesaDaPrendere();
     const att = S.attivitaConScadenza();
     const eventi = S.eventiDelGiorno();
@@ -94,11 +95,25 @@ export default {
                         ? 'Qualcosa è arrivato dall\'iPhone' : '' }
       }),
       tessera({
-        id: 'biancheria', nome: 'Biancheria', colore: 'var(--pulizie)', emoji: '🧺',
-        cifra: bianc.filter(b => b.giorni <= 0).length, sotto: 'cambi da fare adesso',
-        righe: bianc.slice(0, 5).map(b => rigaSemplice(
-          b.nome, 'ultimo cambio ' + gm(b.ultimo_cambio), b.etichetta.testo, b.etichetta.urgente)).join(''),
-        azione: { testo: 'Registra un cambio', vai: 'pulizie:biancheria', nota: '' }
+        id: 'conto', nome: lucia ? 'Conto con ' + lucia.nome : 'Ore e pagamenti',
+        colore: 'var(--pulizie)', emoji: '\u{1F4B6}',
+        cifra: conto ? (conto.differenza >= 0 ? '' : '') + Math.abs(conto.differenza).toFixed(0) : '0',
+        sotto: conto
+          ? (Math.abs(conto.differenza) < 0.005 ? 'conto in pari'
+             : conto.differenza > 0 ? 'euro di troppo gia versati' : 'euro ancora da dare')
+          : 'nessuna persona da pagare',
+        righe: conto ? [
+          rigaSemplice('Ore lavorate in tutto', '', conto.oreTotali.toFixed(1).replace('.', ',')),
+          rigaSemplice('Dovuto', lucia.tariffa_oraria + ' euro/ora', conto.dovuto.toFixed(2).replace('.', ',') + ' EUR'),
+          rigaSemplice('Pagato finora', '', conto.pagato.toFixed(2).replace('.', ',') + ' EUR'),
+          rigaSemplice(
+            Math.abs(conto.differenza) < 0.005 ? 'Conto in pari'
+              : conto.differenza > 0
+                ? lucia.nome + ' e a debito di ' + conto.differenza.toFixed(2).replace('.', ',') + ' EUR'
+                : lucia.nome + ' e a credito di ' + Math.abs(conto.differenza).toFixed(2).replace('.', ',') + ' EUR',
+            '', '', conto.differenza < -0.005)
+        ].join('') : vuoto('Aggiungi una persona che pulisce'),
+        azione: { testo: 'Vai ai pagamenti', vai: 'pulizie:pagamenti', nota: '' }
       }),
       tessera({
         id: 'giornata', nome: 'La giornata', colore: 'var(--calendario)', emoji: '📅',

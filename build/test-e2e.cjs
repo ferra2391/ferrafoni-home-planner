@@ -64,10 +64,7 @@ async function main(){
 
   click(q('[data-modulo="pulizie"]'));
   await new Promise(r => setTimeout(r, 50));
-  click(q('[data-sezione="biancheria"]'));
-  await new Promise(r => setTimeout(r, 50));
-  prova('la vista biancheria ha il pulsante aggiungi articolo', !!q('[data-nuovo-bianc]'));
-  prova('ogni riga ha il pulsante storico', !!q('[data-storico]'));
+  prova('la scheda Biancheria non esiste piu', !q('[data-sezione="biancheria"]'));
 
   click(q('[data-sezione="ore"]'));
   await new Promise(r => setTimeout(r, 50));
@@ -153,6 +150,87 @@ async function main(){
     await new Promise(r => setTimeout(r, 80));
     prova('la nuova tariffa è visibile nel conto', document.body.innerHTML.includes('15 €/ora'));
   }
+
+  // --- checklist: la spunta deve CHIEDERE la data, non inserirla da sola ---
+  click(q('[data-modulo="pulizie"]'));
+  await new Promise(r => setTimeout(r, 60));
+  click(q('[data-sezione="checklist"]'));
+  await new Promise(r => setTimeout(r, 80));
+
+  prova('il banner del conto compare sui giorni lavorati',
+    /a debito di|a credito di|conto in pari/.test(document.body.innerHTML));
+  prova('la card note ha il campo per aggiungerne una', !!q('#nuova-nota'));
+  prova('ogni voce ha il pulsante Note', !!q('[data-nota-voce]'));
+
+  const gruppo2 = q('[data-gruppo]');
+  if (gruppo2 && !gruppo2.closest('.gruppo').classList.contains('aperto')) click(gruppo2);
+  await new Promise(r => setTimeout(r, 60));
+
+  const nonSpuntata = [...document.querySelectorAll('[data-segna="fatto"]')]
+    .find(b => !b.classList.contains('f-on'));
+  if (nonSpuntata) {
+    click(nonSpuntata);
+    await new Promise(r => setTimeout(r, 90));
+    prova('cliccando Fatto si apre la richiesta della data', q('#velo').className.includes('on'));
+    click(q('#foglio-chiudi'));
+    await new Promise(r => setTimeout(r, 60));
+  }
+
+  // --- nota su una singola voce ---
+  click(q('[data-nota-voce]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('il modale della nota per voce si apre', q('#velo2').className.includes('on'));
+  const areaNota = q('#foglio2-campi [data-campo="nota"]');
+  prova('la nota usa un campo di testo lungo', areaNota && areaNota.tagName === 'TEXTAREA');
+  if (areaNota) {
+    areaNota.value = 'Nota di prova sulla voce';
+    click(q('#foglio2-conferma'));
+    await new Promise(r => setTimeout(r, 110));
+    prova('la nota compare sotto la voce', document.body.innerHTML.includes('Nota di prova sulla voce'));
+    prova('la nota e in grassetto corsivo', !!q('.nota-voce'));
+  }
+
+  // --- nota libera nella card ---
+  const campoNota = q('#nuova-nota');
+  if (campoNota) {
+    campoNota.value = 'Nota libera di prova';
+    click(q('[data-aggiungi-nota]'));
+    await new Promise(r => setTimeout(r, 110));
+    prova('la nota libera compare nella card', document.body.innerHTML.includes('Nota libera di prova'));
+  }
+
+  // --- aggiungi giornata: deve chiedere giorno e orario ---
+  click(q('[data-nuova-giornata]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('Aggiungi giornata apre un modale', q('#velo2').className.includes('on'));
+  prova('il modale chiede il giorno', !!q('#foglio2-campi [data-campo="data"]'));
+  prova('il modale chiede ora di inizio e fine',
+    !!q('#foglio2-campi [data-campo="ora_inizio"]') && !!q('#foglio2-campi [data-campo="ora_fine"]'));
+  if (q('#foglio2-campi [data-campo="ora_inizio"]')) {
+    q('#foglio2-campi [data-campo="ora_inizio"]').value = '09:00';
+    q('#foglio2-campi [data-campo="ora_fine"]').value = '13:00';
+    click(q('#foglio2-conferma'));
+    await new Promise(r => setTimeout(r, 110));
+    prova('la giornata calcola 4 ore dall orario', document.body.innerHTML.includes('09:00'));
+  }
+
+  // --- ore e storico: navigazione fra i mesi ---
+  click(q('[data-sezione="ore"]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('la vista ore ha le frecce dei mesi', !!q('[data-mese="-1"]'));
+  const titoloMese = q('.settimana-barra .et b')?.textContent || '';
+  click(q('[data-mese="-1"]'));
+  await new Promise(r => setTimeout(r, 90));
+  const titoloDopo = q('.settimana-barra .et b')?.textContent || '';
+  prova('la freccia indietro cambia mese', titoloMese !== titoloDopo && titoloDopo.length > 0);
+  prova('compare il pulsante per tornare al mese corrente', !!q('[data-mese="0"]'));
+
+  // --- impostazioni ripulite ---
+  click(q('[data-sezione="impostazioni"]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('Giorni di servizio e stato tolto', !document.body.innerHTML.includes('Giorni di servizio'));
+  prova('Orario abituale e stato tolto', !document.body.innerHTML.includes('Orario abituale'));
+  prova('la tariffa oraria e ancora modificabile', !!q('[data-persona-tariffa]'));
 
   console.log('');
   let falliti = 0;

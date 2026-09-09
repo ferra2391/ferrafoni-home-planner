@@ -65,14 +65,6 @@ export function attivitaConScadenza(){
 export function scadenzeSettimana(giorni = 7){
   const dentro = [];
 
-  biancheriaConScadenza().forEach(b => {
-    if (b.giorni <= giorni) dentro.push({
-      titolo: b.nome, sotto: 'Biancheria, ogni ' + b.ogni_giorni + ' giorni',
-      emoji: '🧺', modulo: 'pulizie', sezione: 'biancheria',
-      giorni: b.giorni, etichetta: b.etichetta
-    });
-  });
-
   attivitaConScadenza().forEach(a => {
     if (a.giorni <= giorni) dentro.push({
       titolo: a.nome, sotto: (categoria(a.categoria_id)?.nome || 'Attività') + ' · ' + nomePersona(a.persona_id),
@@ -259,4 +251,33 @@ export function modificaPagamentoLocale(id, campi){
 }
 export function rimuoviPagamentoLocale(id){
   S.dati.pagamenti = (S.dati.pagamenti || []).filter(p => String(p.id) !== String(id)); avvisa();
+}
+
+/* ---------- note libere ---------- */
+export const note = (modulo = 'pulizie') =>
+  (S.dati?.note || []).filter(n => n.modulo === modulo);
+
+export function aggiungiNotaLocale(n){
+  if (!S.dati.note) S.dati.note = [];
+  S.dati.note.unshift(n); avvisa();
+}
+export function modificaNotaLocale(id, testo){
+  const n = (S.dati.note || []).find(x => String(x.id) === String(id));
+  if (n) { n.testo = testo; avvisa(); }
+}
+export function rimuoviNotaLocale(id){
+  S.dati.note = (S.dati.note || []).filter(n => String(n.id) !== String(id)); avvisa();
+}
+
+/* ---------- nota su una singola voce di checklist ---------- */
+export function applicaNotaVoce(voceId, testo){
+  const arr = S.dati.pulizie.spunte;
+  const i = arr.findIndex(s => s.voce_id === voceId);
+  if (i >= 0) {
+    arr[i].nota = testo || null;
+  } else if (testo) {
+    arr.push({ voce_id: voceId, settimana: S.settimana, stato: 'nota',
+               data: iso(OGGI), persona_id: null, nota: testo });
+  }
+  avvisa();
 }

@@ -4,6 +4,7 @@
 -- ============================================================
 
 DELETE FROM registro;
+DELETE FROM note;
 DELETE FROM eventi;
 DELETE FROM attivita;
 DELETE FROM spesa_ricorrenti;
@@ -169,6 +170,12 @@ INSERT INTO eventi (id, titolo, calendario, inizio, tutto_il_giorno, persona_id,
  ('e06','Colloquio asilo','asilo', date('now','weekday 1','-3 day')||'T17:00',0,'vivien',NULL),
  ('e07','Cena dai nonni','famiglia', date('now','weekday 1','-2 day')||'T20:00',0,NULL,NULL),
  ('e08','Parco con le bambine','famiglia', date('now','weekday 1','-1 day')||'T10:30',0,NULL,NULL);
+
+-- ---------- note per chi pulisce ----------
+INSERT INTO note (modulo, testo) VALUES
+ ('pulizie','Lenzuola nell''armadio del corridoio, seconda anta, ripiano alto'),
+ ('pulizie','Niente candeggina in cucina: solo detergente neutro sul piano in legno'),
+ ('pulizie','Camera di Maddie dopo le 15:00, fa il riposino fino alle 14:45');
 
 -- ---------- impostazioni ----------
 INSERT INTO impostazioni (modulo, chiave, valore, tipo) VALUES

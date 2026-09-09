@@ -92,6 +92,10 @@ function campoHtml(c, valori){
       ${c.opzioni.map(o => `<option value="${o.id}" ${String(o.id) === String(v) ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}
     </select>`;
   }
+  if (c.tipo === 'testolungo') {
+    return `<textarea data-campo="${c.nome}" rows="3" placeholder="${esc(c.placeholder||'')}">${esc(v)}</textarea>`;
+  }
+  if (c.tipo === 'ora')    return `<input type="time" data-campo="${c.nome}" value="${esc(v)}">`;
   if (c.tipo === 'numero') return `<input type="number" data-campo="${c.nome}" value="${esc(v)}" min="${c.min ?? ''}" step="${c.step || 1}">`;
   if (c.tipo === 'data')   return `<input type="date" data-campo="${c.nome}" value="${esc(v)}">`;
   return `<input type="text" data-campo="${c.nome}" value="${esc(v)}" placeholder="${esc(c.placeholder||'')}">`;

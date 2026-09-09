@@ -133,7 +133,7 @@ export function demo(settimana = iso(lunedi())){
         { voce_id:'v01', settimana, stato:'fatto', data:g(-1), persona_id:'collab' },
         { voce_id:'v02', settimana, stato:'fatto', data:g(-1), persona_id:'collab' },
         { voce_id:'v06', settimana, stato:'fatto', data:g(-1), persona_id:'collab' },
-        { voce_id:'v14', settimana, stato:'parziale', data:g(0), persona_id:'vivien' },
+        { voce_id:'v14', settimana, stato:'parziale', data:g(0), persona_id:'vivien', nota:'Fatto solo il cesto dei giochi grandi' },
         { voce_id:'v16', settimana, stato:'fatto', data:g(-1), persona_id:'collab' }
       ],
       ore: [
@@ -157,6 +157,11 @@ export function demo(settimana = iso(lunedi())){
       { modulo:'pulizie', azione:'fatto', dettaglio:'Bagno e sanitari', persona_id:'collab', persona_nome:'Lucia', creato_il: new Date(Date.now()-3600e3).toISOString() },
       { modulo:'spesa', azione:'aggiunto', dettaglio:'Pannolini taglia 5', persona_id:'vivien', persona_nome:'Vivien', creato_il: new Date(Date.now()-7200e3).toISOString() },
       { modulo:'pulizie', azione:'cambio biancheria', dettaglio:'b02', persona_id:'collab', persona_nome:'Lucia', creato_il: new Date(Date.now()-86000e3).toISOString() }
+    ],
+    note: [
+      { id:1, modulo:'pulizie', testo:"Lenzuola nell'armadio del corridoio, seconda anta, ripiano alto", creato_il:new Date().toISOString() },
+      { id:2, modulo:'pulizie', testo:'Niente candeggina in cucina: solo detergente neutro sul piano in legno', creato_il:new Date().toISOString() },
+      { id:3, modulo:'pulizie', testo:'Camera di Maddie dopo le 15:00, riposino fino alle 14:45', creato_il:new Date().toISOString() }
     ],
     pagamenti: [
       { id:1, persona_id:'collab', data:g(-8), importo:40, nota:'Contanti, prima settimana' },

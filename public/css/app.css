@@ -175,6 +175,16 @@
 .segna button:active{transform:scale(.95)}
 .segna button.f-on{background:var(--pulizie);border-color:var(--pulizie);color:#fff;box-shadow:var(--ombra-1)}
 .segna button.p-on{background:var(--ambra);border-color:var(--ambra);color:#fff;box-shadow:var(--ombra-1)}
+.segna button.n-on{background:#3F5A6B;border-color:#3F5A6B;color:#fff;box-shadow:var(--ombra-1)}
+
+/* nota scritta a mano sotto una voce di checklist */
+.nota-voce{display:block;margin-top:6px;font-weight:700;font-style:italic;
+  font-size:.85rem;color:#3F5A6B;line-height:1.35}
+
+/* campo di testo lungo nel modale */
+.campo-riga textarea{font:inherit;font-size:.95rem;padding:12px 14px;border:1px solid var(--linea);
+  border-radius:11px;background:#fff;color:var(--testo);width:100%;resize:vertical;min-height:84px}
+.campo-riga textarea:focus{border-color:var(--accento);outline:none}
 
 /* ---------- tabelle ---------- */
 .tab{width:100%;border-collapse:collapse}
