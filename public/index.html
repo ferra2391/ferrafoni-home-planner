@@ -97,6 +97,9 @@
   </div>
 </div>
 
-<script type="module" src="/js/app.js"></script>
+<!-- Codice compilato per funzionare anche su Safari 12 (iPad su iOS 12).
+     I sorgenti leggibili restano in /js: il bundle si rigenera con
+     npx esbuild public/js/app.js --bundle --target=es2017 --format=iife --outfile=public/js/bundle.js -->
+<script src="/js/bundle.js" defer></script>
 </body>
 </html>

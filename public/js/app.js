@@ -14,7 +14,9 @@ const agganciati = new Set();
 
 function disegnaColonna(){
   $('#voci').innerHTML = MODULI.filter(m => !m.nascosto).map(m => {
-    const d = m.distintivo ? m.distintivo() : { n: 0 };
+    // Un modulo che sbaglia un conteggio non deve impedire il disegno di tutta la colonna.
+    let d = { n: 0 };
+    try { if (m.distintivo) d = m.distintivo(); } catch { d = { n: 0 }; }
     return `<li><button class="voce ${vista.modulo === m.id ? 'on' : ''}" style="--c:${m.colore}" data-modulo="${m.id}">
       <span class="emj">${m.emoji}</span><span class="nm">${esc(m.nome)}</span>
       ${d.n ? `<span class="bdg ${d.caldo ? 'caldo' : ''}">${d.n}</span>` : ''}
@@ -50,7 +52,23 @@ function disegnaTestata(){
 /* ---------- corpo ---------- */
 
 function disegna(_stato, opzioni = {}){
-  if (!S.S.dati) return;
+  // La colonna e la testata si disegnano sempre, anche prima che i dati
+  // arrivino: altrimenti, se il server tarda, resta tutto morto e non si
+  // riesce nemmeno ad aprire le impostazioni per correggere la chiave.
+  if (!S.S.dati) {
+    disegnaColonna();
+    $('#corpo').innerHTML = S.S.caricamento
+      ? '<p class="vuoto">Carico i dati di casa…</p>'
+      : `<section class="riq" style="max-width:560px;margin:0 auto">
+           <header><h3>Non riesco a leggere i dati</h3></header>
+           <div class="dentro">
+             <p style="margin:0 0 14px">${esc(rete.motivo || 'collegamento non riuscito')}.</p>
+             <button class="btn" id="riprova">Riprova</button>
+           </div>
+         </section>`;
+    return;
+  }
+
   const m = modulo(vista.modulo);
   if (!m.sezioni.some(s => s.id === vista.sezione)) vista.sezione = m.sezioni[0].id;
 
@@ -98,6 +116,10 @@ function agganciaGuscio(){
 
   $('#vai-generali').addEventListener('click', () => vai('generali'));
 
+  document.addEventListener('click', e => {
+    if (e.target.closest('#riprova')) S.carica(S.S.settimana);
+  });
+
   // Gli interruttori delle impostazioni sono dimostrativi finché
   // non vengono collegati alla tabella impostazioni.
   document.addEventListener('click', e => {
@@ -113,7 +135,26 @@ function agganciaGuscio(){
 
 /* ---------- avvio ---------- */
 
+// Safari 12 (iPad su iOS 12) non conosce gap dentro i flex: senza questa prova
+// gli elementi finirebbero appiccicati. Se manca, il foglio di stile applica
+// dei margini al posto suo.
+function verificaFlexGap(){
+  const prova = document.createElement('div');
+  prova.style.display = 'flex';
+  prova.style.flexDirection = 'column';
+  prova.style.rowGap = '1px';
+  prova.style.position = 'absolute';
+  prova.style.visibility = 'hidden';
+  prova.appendChild(document.createElement('div'));
+  prova.appendChild(document.createElement('div'));
+  document.body.appendChild(prova);
+  const supportato = prova.scrollHeight === 1;
+  prova.parentNode.removeChild(prova);
+  if (!supportato) document.body.classList.add('senza-gap');
+}
+
 async function avvia(){
+  verificaFlexGap();
   if (localStorage.getItem('ferrafoni.testoGrande') === '1') document.body.classList.add('testo-grande');
   agganciaGuscio();
   agganciaModale();

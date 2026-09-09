@@ -90,7 +90,7 @@ h1,h2,h3,h4{margin:0;letter-spacing:-.022em}
 .pill{
   display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 10px;border-radius:8px;
   font-size:.79rem;font-weight:600;white-space:nowrap;
-  background:color-mix(in srgb,var(--c,var(--tenue)) 13%,transparent);color:var(--c,var(--tenue));
+  background:#EFEDE6;background:color-mix(in srgb,var(--c,var(--tenue)) 13%,transparent);color:var(--c,var(--tenue));
 }
 .pill.neutra{background:#EEEBE3;color:var(--tenue)}
 .pill.rossa{background:var(--rosso-fondo);color:var(--rosso)}

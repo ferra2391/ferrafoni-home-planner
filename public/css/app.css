@@ -39,7 +39,7 @@
 /* ---------- testata ---------- */
 .principale{display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .testata{display:flex;align-items:center;justify-content:space-between;gap:20px;
-  padding:16px 26px;border-bottom:1px solid var(--linea);background:rgba(235,232,223,.85);backdrop-filter:blur(8px)}
+  padding:16px 26px;border-bottom:1px solid var(--linea);background:rgba(235,232,223,.85);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .testata .sx{min-width:0}
 .testata .data{font-size:.85rem;color:var(--tenue);text-align:right;line-height:1.3}
 .testata .data b{display:block;color:var(--testo);font-size:1rem}
@@ -114,7 +114,7 @@
   border-top:4px solid var(--c)}
 .tessera .emj{font-size:1.5rem;width:44px;height:44px;border-radius:12px;flex:none;
   display:flex;align-items:center;justify-content:center;
-  background:color-mix(in srgb,var(--c) 12%,transparent)}
+  background:#EDEAE1;background:color-mix(in srgb,var(--c) 12%,transparent)}
 .tessera .info{flex:1;min-width:0}
 .tessera .info b{display:block;font-size:1.02rem;font-weight:600}
 .tessera .info span{display:block;font-size:.83rem;color:var(--tenue);margin-top:2px}
@@ -229,8 +229,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 .telefono .sc.pri{background:var(--spesa)}
 
 /* ---------- modale ---------- */
-.velo{position:fixed;inset:0;background:rgba(14,25,32,.55);display:none;align-items:center;justify-content:center;
-  z-index:60;padding:24px;backdrop-filter:blur(3px)}
+.velo{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;background:rgba(14,25,32,.55);display:none;align-items:center;justify-content:center;
+  z-index:60;padding:24px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .velo.on{display:flex;animation:sali .2s ease both}
 .foglio{background:var(--pannello);border-radius:20px;width:560px;max-width:100%;overflow:hidden;box-shadow:var(--ombra-3)}
 .foglio header{padding:22px 24px 6px}
@@ -294,7 +294,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 
 .voce-cal{display:block;width:100%;text-align:left;margin-bottom:4px;padding:5px 7px;
   border-radius:6px;font-size:.72rem;line-height:1.3;
-  background:color-mix(in srgb,var(--ec) 14%,transparent);
+  background:#F0EDE5;background:color-mix(in srgb,var(--ec) 14%,transparent);
   border-left:2.5px solid var(--ec);color:#24323C;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:filter .12s}
 .voce-cal:hover{filter:brightness(.95)}
@@ -306,3 +306,41 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 .riga-azioni button:hover{background:#F1EEE6;border-color:#BDB6A5}
 .riga-azioni button.pericolo{color:var(--rosso)}
 .riga-azioni button.pericolo:hover{background:var(--rosso-fondo);border-color:#E2BDB7}
+
+/* ============================================================
+   Ripiego per Safari 12 (iPad su iOS 12), che non conosce gap
+   dentro i flex. La classe la mette app.js solo se serve davvero:
+   sui browser aggiornati questo blocco non tocca niente.
+   ============================================================ */
+.senza-gap .azioni > * + *,
+.senza-gap .segna > * + *,
+.senza-gap .riga-azioni > * + *,
+.senza-gap .etichette > * + *,
+.senza-gap .settimana-barra > * + *,
+.senza-gap .foglio footer > * + *,
+.senza-gap .picker > * + *,
+.senza-gap .riga-campo > * + *,
+.senza-gap .segmenti > * + *{margin-left:9px}
+
+.senza-gap .righe li > * + *,
+.senza-gap .compito > * + *,
+.senza-gap .art > * + *,
+.senza-gap .log-riga > * + *,
+.senza-gap .urg > * + *,
+.senza-gap .cfg li > * + *,
+.senza-gap .voce > * + *,
+.senza-gap .marchio .casa > * + *,
+.senza-gap .piede button > * + *,
+.senza-gap .stato-rete > * + *,
+.senza-gap .gruppo > .capo > * + *,
+.senza-gap .tessera > .testa > * + *{margin-left:12px}
+
+.senza-gap .cfg li > * + *{margin-left:20px}
+.senza-gap .tabs > * + *{margin-left:6px}
+.senza-gap .campi-form > * + *{margin-top:14px}
+.senza-gap .campo-riga > * + *{margin-top:7px}
+.senza-gap .griglia > * + *{margin-top:0}
+
+/* contenitori messi in fila direttamente nell'HTML generato */
+.senza-gap [style*="display:flex"] > * + *{margin-left:9px}
+.senza-gap [style*="align-content:start"] > * + *{margin-left:0}

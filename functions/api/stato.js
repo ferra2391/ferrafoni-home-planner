@@ -7,7 +7,13 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const settimana = url.searchParams.get('settimana') || lunedi();
 
-  const q = (sql, ...p) => db.prepare(sql).bind(...p).all();
+  // Se una tabella non c'e ancora (migrazione non eseguita) la singola query
+  // fallisce, ma il resto dei dati deve arrivare lo stesso: senza questa rete
+  // l'app resterebbe senza niente da mostrare.
+  const q = async (sql, ...p) => {
+    try { return await db.prepare(sql).bind(...p).all(); }
+    catch (e) { return { results: [], errore: String(e.message || e) }; }
+  };
 
   const [
     persone, moduli, categorie, impostazioni,
@@ -32,8 +38,17 @@ export async function onRequestGet({ request, env }) {
     q('SELECT * FROM note ORDER BY creato_il DESC')
   ]);
 
+  // Elenca le parti che non e stato possibile leggere, cosi il problema
+  // e visibile invece di trasformarsi in una schermata vuota.
+  const mancanti = [];
+  for (const [nome, r] of Object.entries({ persone, moduli, categorie, impostazioni, voci,
+      spunte, ore, biancheria, spesa, ricorrenti, attivita, eventi, registro, pagamenti, note })) {
+    if (r.errore) mancanti.push(nome);
+  }
+
   return ok({
     settimana,
+    mancanti,
     aggiornato: new Date().toISOString(),
     persone: persone.results,
     moduli: moduli.results,

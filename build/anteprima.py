@@ -15,10 +15,16 @@ def leggi(p):
 # tutti i moduli JS, con il percorso usato negli import
 moduli = {}
 for f in sorted((PUB / "js").rglob("*.js")):
+    if f.name == "bundle.js":
+        continue   # e il compilato, l'anteprima usa i sorgenti
     chiave = "/" + f.relative_to(PUB).as_posix()
     moduli[chiave] = f.read_text(encoding="utf-8")
 
 html = leggi("index.html")
+
+# L'anteprima usa i sorgenti a moduli, non il bundle: cosi resta leggibile
+# e rispecchia sempre l'ultima modifica anche senza ricompilare.
+html = html.replace('<script src="/js/bundle.js" defer></script>', '__SCRIPT__')
 
 # stili: da collegamento esterno a blocco inline
 stili = "\n".join(leggi("css/" + n) for n in ("base.css", "app.css"))
@@ -66,7 +72,7 @@ import(costruisci('/js/app.js')).catch(e => {
 </script>
 """
 
-html = html.replace('<script type="module" src="/js/app.js"></script>',
+html = html.replace('__SCRIPT__',
                     caricatore.replace("__FILES__", json.dumps(moduli, ensure_ascii=False)))
 
 uscita = RADICE / "anteprima.html"

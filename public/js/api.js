@@ -10,17 +10,33 @@ export const rete = { collegata: false, ultimo: null, motivo: 'non provata' };
 export const chiave     = ()  => localStorage.getItem(CHIAVE) || '';
 export const salvaChiave = v  => localStorage.setItem(CHIAVE, v || '');
 
+// Ogni chiamata ha un limite di tempo: senza, se la rete si impianta
+// l'attesa non finisce mai e l'app resta bloccata sul caricamento.
+const ATTESA_MAX = 8000;
+
 async function chiama(percorso, opzioni = {}){
-  const r = await fetch('/api' + percorso, {
-    ...opzioni,
-    headers: {
-      'content-type': 'application/json',
-      ...(chiave() ? { 'x-casa-chiave': chiave() } : {}),
-      ...(opzioni.headers || {})
+  const taglia = new AbortController();
+  const timer = setTimeout(() => taglia.abort(), opzioni.attesa || ATTESA_MAX);
+
+  try {
+    const r = await fetch('/api' + percorso, {
+      ...opzioni,
+      signal: taglia.signal,
+      headers: {
+        'content-type': 'application/json',
+        ...(chiave() ? { 'x-casa-chiave': chiave() } : {}),
+        ...(opzioni.headers || {})
+      }
+    });
+    if (!r.ok) {
+      let dettaglio = 'HTTP ' + r.status;
+      try { const j = await r.json(); if (j?.errore) dettaglio = j.errore; } catch { /* corpo non leggibile */ }
+      throw new Error(dettaglio);
     }
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
+    return await r.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function caricaStato(settimana){
@@ -29,7 +45,10 @@ export async function caricaStato(settimana){
     rete.collegata = true; rete.ultimo = new Date(); rete.motivo = 'collegata';
     return d;
   } catch (e) {
-    rete.collegata = false; rete.motivo = 'dati locali';
+    rete.collegata = false;
+    rete.motivo = e.name === 'AbortError'
+      ? 'il server non ha risposto in tempo'
+      : (e.message || 'errore di collegamento');
     return demo(settimana);
   }
 }

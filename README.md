@@ -36,6 +36,27 @@ La colonna di sinistra, le schede e i badge si costruiscono da soli.
 
 ---
 
+## Compatibilita con i browser datati
+
+L'iPad di casa gira su iOS 12, il cui Safari e del 2018 e non capisce la
+scrittura moderna del JavaScript. Per questo `index.html` non carica i moduli
+di `public/js` direttamente, ma il file compilato `public/js/bundle.js`.
+
+I sorgenti restano quelli leggibili sotto `public/js`: il bundle e solo la loro
+traduzione. **Dopo ogni modifica ai sorgenti va rigenerato**, altrimenti il sito
+continua a servire la versione vecchia:
+
+```bash
+sh build/compila.sh
+```
+
+Nel foglio di stile ci sono anche i ripieghi per le proprieta che quel Safari
+non conosce: `inset`, `color-mix`, `backdrop-filter` e `gap` dentro i flex.
+Quest'ultimo viene rilevato a runtime da `app.js`, che aggiunge la classe
+`senza-gap` al body solo dove serve davvero.
+
+---
+
 ## Aggiornamenti dopo la prima pubblicazione
 
 Se il database è già online (hai già fatto il Passo 2) e stai solo aggiungendo
