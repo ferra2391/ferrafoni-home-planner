@@ -22,7 +22,7 @@ function vistaScadenze(){
             a.ricorrenza_giorni === 180 ? '6 mesi' : a.ricorrenza_giorni + ' giorni') : 'una volta'}</td>
       <td style="text-align:right"><div class="riga-azioni" style="justify-content:flex-end;display:inline-flex">
         <button class="btn piccolo" style="background:var(--attivita)" data-fatta="${a.id}">Fatta</button>
-        <button data-mod-att="${a.id}" title="Modifica">✎</button>
+        <button data-mod-att="${a.id}">Modifica</button>
       </div></td>
     </tr>`);
 

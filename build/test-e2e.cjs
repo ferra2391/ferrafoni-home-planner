@@ -74,6 +74,7 @@ async function main(){
   click(q('[data-modulo="calendario"]'));
   await new Promise(r => setTimeout(r, 80));
   prova('il calendario ha la scheda Attivita programmate', !!q('[data-sezione="attivita"]'));
+  prova('la scheda Settimana e diventata Mese', !!q('[data-sezione="mese"]') && !q('[data-sezione="settimana"]'));
   click(q('[data-sezione="attivita"]'));
   await new Promise(r => setTimeout(r, 80));
   prova('c\'è il pulsante "Nuova attività"', !!q('[data-nuova-attivita]'));
@@ -272,6 +273,82 @@ async function main(){
   const cardOre = [...document.querySelectorAll('.riq')]
     .map(r => r.textContent).find(t => t.includes('Giorni lavorati')) || '';
   prova('la giornata appena aggiunta compare nella card', cardOre.includes('14:00'));
+
+  // --- calendario: vista mensile ---
+  click(q('[data-modulo="calendario"]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('la griglia del mese esiste', !!q('.mese'));
+  prova('ci sono 7 intestazioni dei giorni', document.querySelectorAll('.mese-int').length === 7);
+  prova('le celle del mese sono almeno 28', document.querySelectorAll('.mese-cella').length >= 28);
+  prova('ci sono le frecce per scorrere i mesi', !!q('[data-cal-mese="-1"]'));
+  prova('"Calendari collegati" e stato tolto', !document.body.innerHTML.includes('Calendari collegati'));
+
+  const titoloMese1 = q('.settimana-barra .et b')?.textContent || '';
+  click(q('[data-cal-mese="1"]'));
+  await new Promise(r => setTimeout(r, 90));
+  const titoloMese2 = q('.settimana-barra .et b')?.textContent || '';
+  prova('la freccia avanti cambia mese', titoloMese1 !== titoloMese2 && titoloMese2.length > 0);
+  click(q('[data-cal-mese="0"]'));
+  await new Promise(r => setTimeout(r, 90));
+
+  // creazione di un impegno da una casella del mese
+  const cellaLibera = [...document.querySelectorAll('.mese-cella[data-giorno]')]
+    .find(c => !c.querySelector('.voce-cal'));
+  if (cellaLibera) {
+    const giornoScelto = cellaLibera.dataset.giorno;
+    click(cellaLibera);
+    await new Promise(r => setTimeout(r, 90));
+    prova('toccando un giorno si apre il nuovo impegno', q('#velo2').className.includes('on'));
+    prova('il giorno e gia compilato',
+      q('#foglio2-campi [data-campo="data"]')?.value === giornoScelto);
+    q('#foglio2-campi [data-campo="titolo"]').value = 'Impegno di prova';
+    click(q('#foglio2-conferma'));
+    await new Promise(r => setTimeout(r, 200));
+    prova('il nuovo impegno compare nel mese', document.body.innerHTML.includes('Impegno di prova'));
+  }
+
+  // modifica di un impegno esistente
+  const daModificare = q('[data-mod-evento]');
+  if (daModificare) {
+    click(daModificare);
+    await new Promise(r => setTimeout(r, 100));
+    prova('il modale di modifica impegno si apre', q('#velo2').className.includes('on'));
+    prova('il titolo dell impegno e precompilato',
+      (q('#foglio2-campi [data-campo="titolo"]')?.value || '').length > 0);
+    prova('si puo eliminare l impegno', q('#foglio2-elimina').style.display !== 'none');
+    q('#foglio2-campi [data-campo="titolo"]').value = 'Impegno rinominato';
+    click(q('#foglio2-conferma'));
+    await new Promise(r => setTimeout(r, 200));
+    prova('la modifica dell impegno si vede', document.body.innerHTML.includes('Impegno rinominato'));
+  }
+
+  // impostazioni calendario ripulite
+  click(q('[data-sezione="impostazioni"]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('card "Cosa appare nella griglia" tolta', !document.body.innerHTML.includes('Cosa appare nella griglia'));
+  prova('card Avvisi tolta', !document.body.innerHTML.includes('Avvisa prima di ogni impegno'));
+  prova('restano le impostazioni delle attivita', document.body.innerHTML.includes('Ricorrenze'));
+
+  // attivita: pulsante modifica leggibile
+  click(q('[data-sezione="attivita"]'));
+  await new Promise(r => setTimeout(r, 90));
+  const btnMod = q('[data-mod-att]');
+  prova('il pulsante Modifica delle attivita ha un etichetta chiara',
+    btnMod && btnMod.textContent.trim() === 'Modifica');
+
+  // --- pulizie: note della settimana e giorni lavorati del mese ---
+  click(q('[data-modulo="pulizie"]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('c\'e la card Note pulizie', document.body.innerHTML.includes('Note pulizie'));
+  prova('c\'e il pulsante per scrivere le note', !!q('[data-note-settimana]'));
+  click(q('[data-note-settimana]'));
+  await new Promise(r => setTimeout(r, 90));
+  prova('il modale delle note settimanali si apre', q('#velo2').className.includes('on'));
+  q('#foglio2-campi [data-campo="testo"]').value = 'Vetri non fatti, da recuperare';
+  click(q('#foglio2-conferma'));
+  await new Promise(r => setTimeout(r, 200));
+  prova('la nota della settimana compare nella card',
+    document.body.innerHTML.includes('Vetri non fatti'));
 
   console.log('');
   let falliti = 0;

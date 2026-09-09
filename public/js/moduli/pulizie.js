@@ -133,6 +133,33 @@ function cardNote(){
     { raso: true, meta: lista.length ? lista.length + ' note' : '' });
 }
 
+// Le note della settimana vivono nella tabella note, con il modulo che porta
+// dentro la data del lunedi: cosi ogni settimana ha le sue e restano nello storico.
+const chiaveNote = sett => 'pulizie-sett-' + sett;
+
+function cardNoteSettimana(){
+  const mia = S.note(chiaveNote(S.S.settimana))[0];
+  const settPrec = iso(piu(new Date(S.S.settimana + 'T00:00:00'), -7));
+  const prec = S.note(chiaveNote(settPrec))[0];
+
+  return riq('Note pulizie',
+    `<div style="padding:0 0 4px">
+       ${mia
+         ? `<p style="margin:0;white-space:pre-wrap;font-size:.93rem">${esc(mia.testo)}</p>`
+         : `<p style="margin:0;color:var(--tenue);font-size:.9rem">Nessuna nota per questa settimana.</p>`}
+     </div>
+     ${prec ? `
+     <div style="margin-top:16px;padding:12px 14px;background:#F3F0E8;border-radius:10px">
+       <p class="occhiello" style="margin:0 0 5px">Rimasto indietro dalla settimana scorsa</p>
+       <p style="margin:0;white-space:pre-wrap;font-size:.88rem;font-style:italic">${esc(prec.testo)}</p>
+     </div>` : ''}
+     <div style="margin-top:14px">
+       <button class="btn chiaro pieno" data-note-settimana>${mia ? 'Modifica le note' : 'Scrivi una nota'}</button>
+     </div>`,
+    { classe: 'tinta', colore: COLORE,
+      meta: breve(new Date(S.S.settimana + 'T00:00:00')) + ' - ' + breve(piu(new Date(S.S.settimana + 'T00:00:00'), 6)) });
+}
+
 function vistaChecklist(){
   const cats = S.categorie('pulizie');
   const voci = S.S.dati.pulizie.voci;
@@ -143,8 +170,14 @@ function vistaChecklist(){
     if (prima) aperti.add(prima.id);
   }
 
-  const ore = S.S.dati.pulizie.ore.filter(o => o.data >= S.S.settimana && o.data <= iso(piu(new Date(S.S.settimana + 'T00:00:00'), 6)));
+  // La card mostra tutto il mese della settimana che sto guardando,
+  // non solo i sette giorni: cosi si vede il quadro completo del pagamento.
+  const meseSett = S.S.settimana.slice(0, 7);
+  const ore = S.S.dati.pulizie.ore
+    .filter(o => o.data.slice(0, 7) === meseSett)
+    .sort((a, b) => b.data.localeCompare(a.data));
   const totale = ore.reduce((s, o) => s + o.ore, 0);
+  const nomeMeseSett = MESI[Number(meseSett.slice(5, 7)) - 1];
 
   return barraSettimana() + `
     <div class="griglia g-lato">
@@ -152,16 +185,17 @@ function vistaChecklist(){
         cats.map(c => gruppo(c, voci.filter(v => v.categoria_id === c.id))).join(''),
         { raso: true, classe: 'tinta', colore: COLORE, meta: 'ogni spunta chiede la data' })}
       <div class="griglia" style="align-content:start">
-        ${riq('Giorni lavorati',
+        ${riq('Giorni lavorati &middot; ' + nomeMeseSett,
           bannerConto() +
           tabella(['Giorno', 'Orario', 'Ore'],
             ore.length ? ore.map(o => `<tr><td>${esc(new Date(o.data).toLocaleDateString('it-IT',{weekday:'long',day:'numeric'}))}</td>
               <td class="num">${esc(o.ora_inizio || '')} - ${esc(o.ora_fine || '')}</td>
               <td class="num">${String(o.ore).replace('.', ',')}</td></tr>`)
-              : [`<tr><td colspan="3">${vuoto('Nessuna giornata registrata')}</td></tr>`]) +
+              : [`<tr><td colspan="3">${vuoto('Nessuna giornata in ' + nomeMeseSett)}</td></tr>`]) +
           `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
              <button class="btn chiaro pieno" data-nuova-giornata>Aggiungi giornata</button></div>`,
-          { raso: true, meta: String(totale).replace('.', ',') + ' ore questa settimana' })}
+          { raso: true, meta: String(totale).replace('.', ',') + ' ore a ' + nomeMeseSett })}
+        ${cardNoteSettimana()}
         ${cardNote()}
       </div>
     </div>`;
@@ -546,6 +580,43 @@ export default {
 
         S.avvisa();
         avviso('Giornata aggiunta: ' + String(ore).replace('.', ',') + ' ore');
+        return;
+      }
+
+      /* ---- note della settimana ---- */
+      if (e.target.closest('[data-note-settimana]')) {
+        const chiave = chiaveNote(S.S.settimana);
+        const mia = S.note(chiave)[0];
+        const r = await modaleForm({
+          titolo: 'Note della settimana', colore: COLORE,
+          sottotitolo: 'Che cosa non e stato fatto, che cosa resta da recuperare.',
+          valori: { testo: mia?.testo || '' },
+          campi: [{ nome:'testo', etichetta:'Note', tipo:'testolungo',
+                    placeholder:'Es. vetri non fatti, finiti i sacchi umido' }],
+          permettiElimina: !!mia
+        });
+        if (!r) return;
+
+        if (r.azione === 'elimina' && mia) {
+          S.rimuoviNotaLocale(mia.id);
+          await prova(api.eliminaNota(mia.id));
+          avviso('Note tolte');
+        } else if (r.azione === 'salva') {
+          const testo = (r.valori.testo || '').trim();
+          if (!testo && mia) {
+            S.rimuoviNotaLocale(mia.id);
+            await prova(api.eliminaNota(mia.id));
+          } else if (mia) {
+            S.modificaNotaLocale(mia.id, testo);
+            await prova(api.modificaNota({ id: mia.id, testo }));
+          } else if (testo) {
+            S.aggiungiNotaLocale({ id:'loc'+Date.now(), modulo: chiave, testo,
+                                   creato_il: new Date().toISOString() });
+            await prova(api.creaNota({ modulo: chiave, testo }));
+          }
+          avviso('Note salvate');
+        }
+        S.avvisa();
         return;
       }
 

@@ -4,6 +4,7 @@ export const GG  = ['domenica','lunedì','martedì','mercoledì','giovedì','ven
 export const GG3 = ['dom','lun','mar','mer','gio','ven','sab'];
 export const MM  = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto',
                     'settembre','ottobre','novembre','dicembre'];
+export const MESI_LUNGHI = MM;
 
 export const inizioGiorno = d => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
 export const OGGI = inizioGiorno(new Date());
