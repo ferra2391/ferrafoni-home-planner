@@ -28,8 +28,7 @@ export default {
         ${riq('Chi vive in casa', `<ul class="cfg" style="margin:-16px -18px">
           ${S.S.dati.persone.map(p => `<li>
             <span class="tx"><strong>${esc(p.nome)}</strong><span>${
-              p.ruolo === 'collaboratrice' ? 'Vede solo checklist pulizie e ore lavorate' :
-              p.ruolo === 'bambina' ? 'Compare nelle attività, non accede all\'app' : 'Accesso completo'}</span></span>
+              p.ruolo === 'bambina' ? 'Compare nelle attivita, non accede all\'app' : 'Accesso completo'}</span></span>
             <button class="btn chiaro piccolo" data-mod-persona="${p.id}">Modifica</button>
           </li>`).join('')}
         </ul>

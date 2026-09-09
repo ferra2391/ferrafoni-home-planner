@@ -1,7 +1,10 @@
 // Stato dell'applicazione: unica fonte di verità per tutti i moduli.
 // I moduli non parlano tra loro, leggono da qui e si iscrivono ai cambiamenti.
 
-import { caricaStato, rete } from './api.js';
+import { caricaStato, rete, scritture } from './api.js';
+
+// Riesposto per comodita di app.js: conta le scritture ancora in volo.
+export { scritture };
 import { OGGI, piu, iso, lunedi, data, scarto, scadenzaEtichetta } from './util.js';
 
 const iscritti = new Set();
@@ -14,14 +17,26 @@ export const S = {
 };
 
 export const iscriviti = fn => { iscritti.add(fn); return () => iscritti.delete(fn); };
-export const avvisa = () => iscritti.forEach(fn => fn(S));
+export const avvisa = (opzioni = {}) => iscritti.forEach(fn => fn(S, opzioni));
 
-export async function carica(settimana = S.settimana){
-  S.caricamento = true; avvisa();
+let ultimaImpronta = '';
+
+// silenzioso = ricarica di sfondo: ridisegna solo se i dati sono davvero cambiati,
+// e senza far ripartire l'animazione di entrata. Serve a evitare lo sfarfallio.
+export async function carica(settimana = S.settimana, { silenzioso = false } = {}){
+  if (!silenzioso) { S.caricamento = true; avvisa(); }
+
+  const cambiaSettimana = settimana !== S.settimana;
   S.settimana = settimana;
-  S.dati = await caricaStato(settimana);
+  const nuovi = await caricaStato(settimana);
   S.caricamento = false;
-  avvisa();
+
+  const impronta = JSON.stringify(nuovi);
+  if (silenzioso && !cambiaSettimana && impronta === ultimaImpronta) return;  // niente di nuovo
+
+  ultimaImpronta = impronta;
+  S.dati = nuovi;
+  avvisa({ silenzioso });
 }
 
 /* ---------- letture comode ---------- */
@@ -68,7 +83,7 @@ export function scadenzeSettimana(giorni = 7){
   attivitaConScadenza().forEach(a => {
     if (a.giorni <= giorni) dentro.push({
       titolo: a.nome, sotto: (categoria(a.categoria_id)?.nome || 'Attività') + ' · ' + nomePersona(a.persona_id),
-      emoji: categoria(a.categoria_id)?.icona || '🔔', modulo: 'attivita', sezione: 'scadenze',
+      emoji: categoria(a.categoria_id)?.icona || '🔔', modulo: 'calendario', sezione: 'attivita',
       giorni: a.giorni, etichetta: a.etichetta
     });
   });

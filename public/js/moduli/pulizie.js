@@ -274,8 +274,6 @@ function vistaImpostazioni(){
         ${rigaCfg('Nome', 'Compare accanto a ogni spunta e nel modulo pagamenti.', `<input type="text" data-persona-nome="${lucia.id}" value="${esc(lucia.nome)}" style="min-width:170px">`)}
         ${rigaCfg('Tariffa oraria', 'Usata per calcolare quanto e dovuto in base alle ore lavorate.', `<div style="display:flex;align-items:center;gap:8px"><input type="number" min="0" step="0.5" data-persona-tariffa="${lucia.id}" value="${lucia.tariffa_oraria || 0}" style="min-width:90px"><span style="color:var(--tenue)">euro/ora</span></div>`)}
         ` : `<li><span class="tx"><span>Nessuna persona con ruolo "chi pulisce". Aggiungila da Casa e famiglia.</span></span></li>`}
-        ${rigaCfg('Registra le ore lavorate', 'Tabella giorno, orario e ore, con navigazione fra i mesi.', interruttore(true, COLORE))}
-        ${rigaCfg('Vista semplificata', 'Solo checklist e ore, senza calendario, spesa e attivita.', interruttore(true, COLORE))}
       </ul>
       ${lucia ? `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
         <button class="btn chiaro pieno" data-salva-tariffa="${lucia.id}">Salva nome e tariffa</button>
@@ -532,7 +530,20 @@ export default {
         const persona = S.persona(persona_id);
         S.S.dati.pulizie.ore.unshift({ id: 'loc' + Date.now(), persona_id,
           data, ora_inizio, ora_fine, ore, tariffa_oraria: persona?.tariffa_oraria ?? null });
-        prova(api.aggiungiOre({ data, ora_inizio, ora_fine, persona_id }));
+
+        // Aspetto la risposta prima di ridisegnare: cosi la riga non puo essere
+        // riportata indietro da una ricarica di sfondo partita nel frattempo.
+        await prova(api.aggiungiOre({ data, ora_inizio, ora_fine, persona_id }));
+
+        // Se la giornata cade in un'altra settimana, la card qui a fianco non
+        // potrebbe mostrarla: sposto la vista sulla settimana giusta.
+        const lunGiornata = iso(lunedi(new Date(data + 'T00:00:00')));
+        if (lunGiornata !== S.S.settimana) {
+          avviso('Giornata aggiunta, vado alla settimana del ' + gm(data));
+          S.carica(lunGiornata);
+          return;
+        }
+
         S.avvisa();
         avviso('Giornata aggiunta: ' + String(ore).replace('.', ',') + ' ore');
         return;

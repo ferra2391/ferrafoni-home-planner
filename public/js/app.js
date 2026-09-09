@@ -49,16 +49,24 @@ function disegnaTestata(){
 
 /* ---------- corpo ---------- */
 
-function disegna(){
+function disegna(_stato, opzioni = {}){
   if (!S.S.dati) return;
   const m = modulo(vista.modulo);
   if (!m.sezioni.some(s => s.id === vista.sezione)) vista.sezione = m.sezioni[0].id;
+
+  // Se c'e un modale aperto non tocco la pagina sotto: il campo che si sta
+  // compilando verrebbe azzerato a meta.
+  if (opzioni.silenzioso && document.querySelector('.velo.on')) return;
 
   disegnaColonna();
   disegnaTestata();
 
   const corpo = $('#corpo');
-  corpo.innerHTML = `<div class="entra">${m.render(vista.sezione, { vai })}</div>`;
+  // L'animazione di entrata solo quando si cambia schermata a mano,
+  // mai sulle ricariche di sfondo: e quella che faceva sfarfallare la pagina.
+  corpo.innerHTML = opzioni.silenzioso
+    ? m.render(vista.sezione, { vai })
+    : `<div class="entra">${m.render(vista.sezione, { vai })}</div>`;
 
   // Ogni modulo si aggancia una sola volta, con delega sul contenitore.
   if (!agganciati.has(m.id) && m.aggancia) {
@@ -90,18 +98,6 @@ function agganciaGuscio(){
 
   $('#vai-generali').addEventListener('click', () => vai('generali'));
 
-  $('#modo-pulizie').addEventListener('click', () => {
-    const app = $('#app');
-    const dentro = app.classList.toggle('concentrato');
-    $('#esci-modo').style.display = dentro ? '' : 'none';
-    if (dentro) vai('pulizie', 'checklist');
-  });
-
-  $('#esci-modo').addEventListener('click', () => {
-    $('#app').classList.remove('concentrato');
-    $('#esci-modo').style.display = 'none';
-  });
-
   // Gli interruttori delle impostazioni sono dimostrativi finché
   // non vengono collegati alla tabella impostazioni.
   document.addEventListener('click', e => {
@@ -126,8 +122,17 @@ async function avvia(){
   await S.carica();
 
   // Ricontrollo periodico: fa comparire sull'iPad ciò che arriva dall'iPhone.
-  setInterval(() => { if (rete.collegata && !document.hidden) S.carica(S.S.settimana); }, 30000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) S.carica(S.S.settimana); });
+  // Ricarica di sfondo: ferma se la scheda non e in primo piano, se c'e un
+  // modale aperto o se una scrittura non ha ancora avuto risposta.
+  const puoRicaricare = () =>
+    rete.collegata && !document.hidden &&
+    S.scritture.aperte === 0 &&
+    !document.querySelector('.velo.on');
+
+  setInterval(() => { if (puoRicaricare()) S.carica(S.S.settimana, { silenzioso: true }); }, 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && puoRicaricare()) S.carica(S.S.settimana, { silenzioso: true });
+  });
 }
 
 avvia();

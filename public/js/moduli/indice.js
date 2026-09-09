@@ -9,5 +9,7 @@ import attivita from './attivita.js';
 import registro from './registro.js';
 import generali from './generali.js';
 
-export const MODULI = [home, pulizie, calendario, spesa, attivita, registro, generali];
+// Le attivita programmate vivono dentro il calendario, come sua scheda:
+// resta importato perche calendario.js lo usa, ma non compare nella colonna.
+export const MODULI = [home, pulizie, calendario, spesa, registro, generali];
 export const modulo = id => MODULI.find(m => m.id === id) || MODULI[0];

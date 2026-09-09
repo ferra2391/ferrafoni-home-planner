@@ -104,6 +104,16 @@ export const api = {
 
 // Le scritture non devono mai bloccare l'interfaccia: si tenta, e se fallisce
 // si continua in locale. L'utente vede subito il risultato.
+//
+// Finche una scrittura e in volo, "aperte" resta maggiore di zero: la ricarica
+// automatica la vede e sta ferma. Senza questa guardia una ricarica che parte
+// nel mezzo riporta indietro i dati dal server e la modifica appena fatta
+// sparisce dalla schermata.
+export const scritture = { aperte: 0 };
+
 export async function prova(promessa){
-  try { await promessa; return true; } catch { return false; }
+  scritture.aperte++;
+  try { await promessa; return true; }
+  catch { return false; }
+  finally { scritture.aperte--; }
 }

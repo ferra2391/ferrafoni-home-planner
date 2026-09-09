@@ -5,6 +5,7 @@ import { esc, GG3, piu, iso, lunedi, OGGI, breve, avviso } from '../util.js';
 import { riq, rigaCfg, interruttore, modaleForm } from '../ui.js';
 import { api, prova } from '../api.js';
 import * as S from '../stato.js';
+import attivita from './attivita.js';
 
 const COLORE = 'var(--calendario)';
 const TINTE = { famiglia:'var(--calendario)', asilo:'var(--spesa)', lavoro:'var(--attivita)' };
@@ -89,10 +90,31 @@ export default {
   nome: 'Calendario',
   emoji: '📅',
   colore: COLORE,
-  sezioni: [{ id:'settimana', nome:'Settimana' }, { id:'impostazioni', nome:'Impostazioni' }],
-  distintivo(){ return { n: S.eventiDelGiorno().length, caldo: false }; },
-  render(sezione){ return sezione === 'impostazioni' ? vistaImpostazioni() : vistaSettimana(); },
-  aggancia(root){
+  sezioni: [
+    { id:'settimana', nome:'Settimana' },
+    { id:'attivita', nome:'Attivita programmate' },
+    { id:'impostazioni', nome:'Impostazioni' }
+  ],
+  distintivo(){
+    const inRitardo = S.attivitaConScadenza().filter(a => a.giorni <= 0).length;
+    const oggi = S.eventiDelGiorno().length;
+    return { n: inRitardo || oggi, caldo: inRitardo > 0 };
+  },
+  render(sezione, contesto){
+    if (sezione === 'attivita') return attivita.render('scadenze', contesto);
+    if (sezione === 'impostazioni') {
+      return vistaImpostazioni() +
+        '<p class="section-t" style="margin:26px 0 12px">Attivita programmate</p>' +
+        attivita.render('impostazioni', contesto);
+    }
+    return vistaSettimana();
+  },
+  aggancia(root, contesto){
+    // I pulsanti delle attivita (Fatta, modifica, nuova) restano quelli del
+    // loro modulo: lo aggancio qui cosi continuano a funzionare da dentro il calendario.
+    attivita.aggancia(root, contesto);
+    attivita.ridisegna = contesto.ridisegna;
+
     root.addEventListener('click', async e => {
       if (!e.target.closest('[data-nuovo-evento]')) return;
 

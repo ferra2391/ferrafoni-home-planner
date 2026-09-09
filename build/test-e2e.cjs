@@ -70,7 +70,11 @@ async function main(){
   await new Promise(r => setTimeout(r, 50));
   prova('la tabella ore ha i pulsanti modifica/elimina', !!q('[data-mod-ore]') && !!q('[data-elimina-ore]'));
 
-  click(q('[data-modulo="attivita"]'));
+  prova('il modulo Attivita non e piu nella colonna', !q('[data-modulo="attivita"]'));
+  click(q('[data-modulo="calendario"]'));
+  await new Promise(r => setTimeout(r, 80));
+  prova('il calendario ha la scheda Attivita programmate', !!q('[data-sezione="attivita"]'));
+  click(q('[data-sezione="attivita"]'));
   await new Promise(r => setTimeout(r, 80));
   prova('c\'è il pulsante "Nuova attività"', !!q('[data-nuova-attivita]'));
   click(q('[data-nuova-attivita]'));
@@ -112,7 +116,10 @@ async function main(){
   prova('esiste un pulsante Fatto nella checklist', !!bottoneFatto);
   if (bottoneFatto) {
     click(bottoneFatto);
-    await new Promise(r => setTimeout(r, 60));
+    await new Promise(r => setTimeout(r, 90));
+    const sceltaOggi = q('#foglio-scelte button');
+    if (sceltaOggi) click(sceltaOggi);
+    await new Promise(r => setTimeout(r, 90));
     click(q('[data-modulo="registro"]'));
     await new Promise(r => setTimeout(r, 80));
     prova('la spunta appena fatta compare nel registro', document.body.innerHTML.includes('segnato come fatto'));
@@ -231,6 +238,40 @@ async function main(){
   prova('Giorni di servizio e stato tolto', !document.body.innerHTML.includes('Giorni di servizio'));
   prova('Orario abituale e stato tolto', !document.body.innerHTML.includes('Orario abituale'));
   prova('la tariffa oraria e ancora modificabile', !!q('[data-persona-tariffa]'));
+
+  // --- vista per chi pulisce rimossa ---
+  prova('il pulsante "Vista per chi pulisce" non c\'e piu', !q('#modo-pulizie'));
+
+  // --- impostazioni pulizie ripulite ---
+  click(q('[data-modulo="pulizie"]'));
+  await new Promise(r => setTimeout(r, 60));
+  click(q('[data-sezione="impostazioni"]'));
+  await new Promise(r => setTimeout(r, 80));
+  prova('"Registra le ore lavorate" tolto', !document.body.innerHTML.includes('Registra le ore lavorate'));
+  prova('"Vista semplificata" tolto', !document.body.innerHTML.includes('Vista semplificata'));
+
+  // --- Lucia ha accesso completo ---
+  click(q('#vai-generali'));
+  await new Promise(r => setTimeout(r, 80));
+  prova('Lucia non e piu limitata alla checklist',
+    !document.body.innerHTML.includes('Vede solo checklist'));
+
+  // --- la giornata aggiunta compare nella card Giorni lavorati ---
+  click(q('[data-modulo="pulizie"]'));
+  await new Promise(r => setTimeout(r, 60));
+  click(q('[data-sezione="checklist"]'));
+  await new Promise(r => setTimeout(r, 80));
+  click(q('[data-nuova-giornata]'));
+  await new Promise(r => setTimeout(r, 90));
+  const oggiIso = new Date().toISOString().slice(0, 10);
+  q('#foglio2-campi [data-campo="data"]').value = oggiIso;
+  q('#foglio2-campi [data-campo="ora_inizio"]').value = '14:00';
+  q('#foglio2-campi [data-campo="ora_fine"]').value = '17:30';
+  click(q('#foglio2-conferma'));
+  await new Promise(r => setTimeout(r, 200));
+  const cardOre = [...document.querySelectorAll('.riq')]
+    .map(r => r.textContent).find(t => t.includes('Giorni lavorati')) || '';
+  prova('la giornata appena aggiunta compare nella card', cardOre.includes('14:00'));
 
   console.log('');
   let falliti = 0;
