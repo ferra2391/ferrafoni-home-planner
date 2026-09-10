@@ -97,13 +97,30 @@ function disegna(_stato, opzioni = {}){
 export function vai(idModulo, idSezione){
   vista.modulo = idModulo;
   vista.sezione = idSezione || modulo(idModulo).sezioni[0].id;
+  if (STRETTO()) menu(false);
   $('#scorri').scrollTop = 0;
   disegna();
 }
 
 /* ---------- eventi generali ---------- */
 
+// Su schermi stretti (iPad in orizzontale) il menu parte chiuso: la colonna
+// da 250px si mangerebbe un quarto della larghezza utile.
+const STRETTO = () => window.innerWidth <= 1240;
+
+function menu(apri){
+  const app = document.getElementById('app');
+  app.classList.toggle('menu-chiuso', !apri);
+}
+
 function agganciaGuscio(){
+  menu(!STRETTO());
+  window.addEventListener('resize', () => { if (!STRETTO()) menu(true); });
+
+  document.getElementById('apri-menu').addEventListener('click', () => {
+    const app = document.getElementById('app');
+    menu(app.classList.contains('menu-chiuso'));
+  });
   $('#voci').addEventListener('click', e => {
     const b = e.target.closest('[data-modulo]');
     if (b) vai(b.dataset.modulo);

@@ -185,7 +185,7 @@ function vistaChecklist(){
         cats.map(c => gruppo(c, voci.filter(v => v.categoria_id === c.id))).join(''),
         { raso: true, classe: 'tinta', colore: COLORE, meta: 'ogni spunta chiede la data' })}
       <div class="griglia" style="align-content:start">
-        ${riq('Giorni lavorati &middot; ' + nomeMeseSett,
+        ${riq('Giorni lavorati · ' + nomeMeseSett,
           bannerConto() +
           tabella(['Giorno', 'Orario', 'Ore'],
             ore.length ? ore.map(o => `<tr><td>${esc(new Date(o.data).toLocaleDateString('it-IT',{weekday:'long',day:'numeric'}))}</td>

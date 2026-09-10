@@ -1140,7 +1140,7 @@
     )}
       <div class="griglia" style="align-content:start">
         ${riq(
-      "Giorni lavorati &middot; " + nomeMeseSett,
+      "Giorni lavorati \xB7 " + nomeMeseSett,
       bannerConto() + tabella(
         ["Giorno", "Orario", "Ore"],
         ore.length ? ore.map((o) => `<tr><td>${esc(new Date(o.data).toLocaleDateString("it-IT", { weekday: "long", day: "numeric" }))}</td>
@@ -2679,10 +2679,24 @@
   function vai(idModulo, idSezione) {
     vista.modulo = idModulo;
     vista.sezione = idSezione || modulo(idModulo).sezioni[0].id;
+    if (STRETTO()) menu(false);
     $("#scorri").scrollTop = 0;
     disegna();
   }
+  var STRETTO = () => window.innerWidth <= 1240;
+  function menu(apri) {
+    const app = document.getElementById("app");
+    app.classList.toggle("menu-chiuso", !apri);
+  }
   function agganciaGuscio() {
+    menu(!STRETTO());
+    window.addEventListener("resize", () => {
+      if (!STRETTO()) menu(true);
+    });
+    document.getElementById("apri-menu").addEventListener("click", () => {
+      const app = document.getElementById("app");
+      menu(app.classList.contains("menu-chiuso"));
+    });
     $("#voci").addEventListener("click", (e) => {
       const b = e.target.closest("[data-modulo]");
       if (b) vai(b.dataset.modulo);

@@ -69,10 +69,10 @@
 .riq.allarme{border-color:#EBCEC8;box-shadow:0 0 0 3px rgba(190,50,39,.05),var(--ombra-1)}
 
 .griglia{display:grid;gap:18px}
-.g2{grid-template-columns:1fr 1fr}
-.g3{grid-template-columns:repeat(3,1fr)}
-.g-lato{grid-template-columns:1.65fr 1fr}
-@media(max-width:1120px){.g3,.g-lato{grid-template-columns:1fr 1fr}}
+.g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g-lato{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+@media(max-width:1240px){.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* ---------- righe ---------- */
 .righe{list-style:none;margin:0;padding:0}
@@ -102,7 +102,7 @@
 .urg.calma{border-color:var(--linea);border-left-color:var(--verde)}
 .urg.calma b{color:var(--verde)}
 
-.cascata{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cascata{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
 .tessera{
   background:var(--pannello);border:1px solid var(--linea);border-radius:var(--raggio);
   box-shadow:var(--ombra-1);overflow:hidden;text-align:left;
@@ -215,8 +215,13 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 .spunta{width:30px;height:30px;border-radius:9px;border:2px solid var(--linea);background:#fff;flex:none;
   display:flex;align-items:center;justify-content:center;transition:.15s}
 .spunta.on{background:var(--spesa);border-color:var(--spesa)}
-.spunta.on::after{content:"";width:12px;height:6px;border-left:2.5px solid #fff;border-bottom:2.5px solid #fff;
+.spunta.on::after{content:"";box-sizing:content-box;width:11px;height:5px;border-left:2.5px solid #fff;border-bottom:2.5px solid #fff;
   transform:rotate(-45deg) translate(1px,-2px)}
+.art .tx{flex:1;min-width:0}
+.art .tx strong{display:block;font-weight:500;font-size:.95rem}
+.art .tx span{display:block;font-size:.8rem;color:var(--tenue);margin-top:2px}
+.art .qd{font-size:.85rem;color:var(--tenue);white-space:nowrap;font-variant-numeric:tabular-nums;
+  flex:none;text-align:right}
 .art.preso .tx strong{color:var(--tenue);text-decoration:line-through}
 
 /* ---------- telefono finto ---------- */
@@ -256,7 +261,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 .vuoto{padding:34px 18px;text-align:center;color:var(--tenue);font-size:.88rem}
 
 /* ---------- modale generico di modifica ---------- */
-.campi-form{padding:6px 24px 20px;display:grid;gap:14px;max-height:60vh;overflow-y:auto}
+.campi-form{padding:6px 24px 20px;display:grid;gap:14px;max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .campo-riga{display:grid;gap:7px}
 .campo-riga label{font-size:.82rem;color:var(--tenue);font-weight:500}
 .campo-riga select,.campo-riga input{width:100%}
@@ -278,11 +283,11 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 
 
 /* ---------- griglia del mese ---------- */
-.mese{display:grid;grid-template-columns:repeat(7,1fr);background:var(--linea-tenue);
+.mese{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--linea-tenue);
   gap:1px;border-top:1px solid var(--linea-tenue)}
 .mese-int{background:#F5F2EA;padding:10px 8px;font-size:.76rem;font-weight:600;
   color:var(--tenue);text-align:center}
-.mese-cella{background:var(--pannello);min-height:112px;padding:7px 7px 8px;
+.mese-cella{background:var(--pannello);min-height:112px;min-width:0;padding:7px 7px 8px;
   cursor:pointer;transition:background .14s;position:relative}
 .mese-cella:hover{background:#F7F5EE}
 .mese-cella.fuori{background:#F2EFE7;cursor:default}
@@ -344,3 +349,62 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 /* contenitori messi in fila direttamente nell'HTML generato */
 .senza-gap [style*="display:flex"] > * + *{margin-left:9px}
 .senza-gap [style*="align-content:start"] > * + *{margin-left:0}
+
+/* ============================================================
+   Menu laterale a scomparsa e adattamento agli schermi stretti
+   (iPad in orizzontale: 1024px, non 1400)
+   ============================================================ */
+
+.apri-menu{width:46px;height:46px;border-radius:11px;border:1px solid var(--linea);
+  background:var(--pannello);display:none;flex-direction:column;justify-content:center;
+  align-items:center;flex:none;margin-right:14px}
+.apri-menu span{display:block;width:20px;height:2px;background:var(--testo);border-radius:2px}
+.apri-menu span + span{margin-top:4px}
+.apri-menu:active{background:#F1EEE6}
+
+.app.menu-chiuso{grid-template-columns:0 1fr}
+.app.menu-chiuso .colonna{opacity:0;pointer-events:none;overflow:hidden;padding:0}
+
+@media (max-width:1240px){
+  .apri-menu{display:flex}
+  .testata{padding:12px 18px}
+  .testata .facce{display:none}
+  .scorri{padding:16px 18px 40px}
+  .tabs{padding:10px 18px 0}
+
+  /* una colonna sola: su 1024px due colonne affiancate sono illeggibili */
+  .g2,.g3,.g-lato,.g-lato-l,.cascata{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{border-bottom:1px solid var(--linea-tenue)}
+
+  /* le voci della checklist vanno a capo: prima il nome, poi i tre pulsanti */
+  .compito{flex-wrap:wrap;padding:12px 14px}
+  .compito .tx{flex:1 1 100%;order:1}
+  .compito .quando{order:2;min-width:0;text-align:left;padding:6px 0;margin-top:4px}
+  .compito .segna{order:3;width:100%;margin-top:8px;justify-content:flex-start}
+  .compito .segna button{flex:1;min-width:0;height:50px;padding:0 8px;font-size:.9rem}
+  .compito .emj{order:0}
+
+  .settimana-barra{flex-wrap:wrap}
+  .settimana-barra .et{flex:1 1 auto;min-width:150px}
+  .settimana-barra .prog{width:100%}
+
+  .riga-azioni button{height:42px;padding:0 10px;font-size:.8rem}
+  .cfg li{flex-wrap:wrap;gap:10px}
+  .cfg .tx{flex:1 1 100%}
+
+  .mese-cella{min-height:88px;padding:5px 5px 6px}
+  .voce-cal{font-size:.66rem;padding:4px 5px}
+  .mese-cella .num{font-size:.78rem}
+
+  .foglio{width:100%}
+  .foglio .scelte{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+
+/* schermi molto stretti: il calendario scorre in orizzontale invece di
+   comprimersi fino a diventare illeggibile */
+@media (max-width:820px){
+  .mese{min-width:700px}
+  .riq .dentro.raso{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .compito .segna button{font-size:.85rem}
+}
