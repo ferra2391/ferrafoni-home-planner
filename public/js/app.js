@@ -82,9 +82,12 @@ function disegna(_stato, opzioni = {}){
   const corpo = $('#corpo');
   // L'animazione di entrata solo quando si cambia schermata a mano,
   // mai sulle ricariche di sfondo: e quella che faceva sfarfallare la pagina.
+  // il contesto passato al modulo deve permettergli anche di ridisegnarsi:
+  // serve a chi carica dati in un secondo momento, come il catalogo della spesa
+  const contesto = { vai, ridisegna: disegna };
   corpo.innerHTML = opzioni.silenzioso
-    ? m.render(vista.sezione, { vai })
-    : `<div class="entra">${m.render(vista.sezione, { vai })}</div>`;
+    ? m.render(vista.sezione, contesto)
+    : `<div class="entra">${m.render(vista.sezione, contesto)}</div>`;
 
   // Ogni modulo si aggancia una sola volta, con delega sul contenitore.
   if (!agganciati.has(m.id) && m.aggancia) {

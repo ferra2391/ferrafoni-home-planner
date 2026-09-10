@@ -14,6 +14,7 @@ async function main(){
   global.localStorage = window.localStorage;
   global.navigator = window.navigator;
   global.MouseEvent = window.MouseEvent;
+  global.Event = window.Event;
   global.HTMLElement = window.HTMLElement;
   global.requestAnimationFrame = fn => setTimeout(fn, 0);
   global.fetch = () => Promise.reject(new Error('rete non disponibile in questo test'));
@@ -250,6 +251,24 @@ async function main(){
   await new Promise(r => setTimeout(r, 80));
   prova('"Registra le ore lavorate" tolto', !document.body.innerHTML.includes('Registra le ore lavorate'));
   prova('"Vista semplificata" tolto', !document.body.innerHTML.includes('Vista semplificata'));
+
+  // --- spesa: catalogo e card rimosse ---
+  click(q('[data-modulo="spesa"]'));
+  await new Promise(r => setTimeout(r, 250));
+  prova('la spesa non ha piu la scheda Impostazioni', !q('[data-sezione="impostazioni"]'));
+  prova('la card "Dall\'iPhone" e stata tolta', !document.body.innerHTML.includes("Dall'iPhone"));
+  prova('non ci sono piu gli articoli ricorrenti', !document.body.innerHTML.includes('Articoli ricorrenti'));
+  prova('c\'e la card Comprati spesso', document.body.innerHTML.includes('Comprati spesso'));
+  prova('i comprati spesso arrivano coi conteggi', !!q('[data-veloce]'));
+
+  const campoNuovo = q('#nuovo-articolo');
+  prova('il campo di aggiunta esiste', !!campoNuovo);
+  if (campoNuovo) {
+    campoNuovo.value = 'latt';
+    campoNuovo.dispatchEvent(new window.Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 120));
+    prova('scrivendo compaiono i suggerimenti dal catalogo', !!q('[data-suggerito]'));
+  }
 
   // --- Lucia ha accesso completo ---
   click(q('#vai-generali'));

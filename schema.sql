@@ -149,6 +149,16 @@ CREATE TABLE IF NOT EXISTS spesa_ricorrenti (
   attivo              INTEGER NOT NULL DEFAULT 1
 );
 
+-- Catalogo prodotti: serve ad assegnare da solo il reparto a cio che si aggiunge.
+CREATE TABLE IF NOT EXISTS catalogo (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome          TEXT NOT NULL,
+  nome_cerca    TEXT NOT NULL,
+  categoria_id  TEXT REFERENCES categorie(id),
+  usi           INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalogo_nome ON catalogo(nome_cerca);
+
 -- ---------- 4. Modulo attività programmate ----------
 
 CREATE TABLE IF NOT EXISTS attivita (

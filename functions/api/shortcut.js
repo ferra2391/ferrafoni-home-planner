@@ -1,4 +1,5 @@
 import { ok, corpo, annota, INTESTAZIONI } from './_utils.js';
+import { reparto } from './_catalogo.js';
 
 // Endpoint pensato per i Comandi Rapidi di iOS: una sola chiamata,
 // tutto passa dalla query, risposta in testo semplice da mostrare a schermo.
@@ -35,10 +36,12 @@ async function gestisci(env, azione, testo, persona, formato) {
       ).bind(nome).first();
       if (esiste) continue;
 
+      // Il reparto lo assegna il server: dall'iPhone si detta solo il nome.
+      const categoria = await reparto(db, nome);
       await db.prepare(
-        `INSERT INTO spesa_articoli (nome, origine, persona_id, aggiornato_il)
-         VALUES (?, 'iphone', ?, datetime('now'))`
-      ).bind(nome, persona || null).run();
+        `INSERT INTO spesa_articoli (nome, categoria_id, origine, persona_id, aggiornato_il)
+         VALUES (?, ?, 'iphone', ?, datetime('now'))`
+      ).bind(nome, categoria, persona || null).run();
       aggiunti.push(nome);
       await annota(db, 'spesa', 'aggiunto', nome, persona, 'iphone');
     }

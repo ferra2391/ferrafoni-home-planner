@@ -1,17 +1,66 @@
-// Modulo lista della spesa: righe raggruppate per reparto, comando rapido iPhone
-// e impostazioni. La spunta è grande, si usa camminando tra gli scaffali.
+// Modulo lista della spesa. Il reparto non lo sceglie chi aggiunge: lo assegna
+// il catalogo sul server, cosi funziona uguale da iPad e da iPhone.
 
 import { esc, plurale, avviso } from '../util.js';
-import { riq, rigaCfg, interruttore, vuoto } from '../ui.js';
+import { riq, rigaCfg, vuoto, modaleForm } from '../ui.js';
 import { api, prova, chiave, salvaChiave, rete } from '../api.js';
 import * as S from '../stato.js';
 
 const COLORE = 'var(--spesa)';
 
+// Catalogo e articoli piu comprati: si caricano una volta sola e restano in memoria.
+let catalogo = null;
+let frequenti = null;
+let suggeriti = [];
+let scritto = '';
+
+async function caricaExtra(ridisegna){
+  if (catalogo === null) {
+    catalogo = [];
+    try { catalogo = (await api.catalogo()).prodotti || []; } catch { catalogo = []; }
+  }
+  if (frequenti === null) {
+    frequenti = [];
+    try { frequenti = (await api.frequenti()).frequenti || []; } catch { frequenti = []; }
+    if (ridisegna) ridisegna();
+  }
+}
+
+// Confronto senza accenti ne maiuscole, come fa il server.
+const normalizza = t => String(t || '').toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+function cerca(testo){
+  const k = normalizza(testo);
+  if (k.length < 2) return [];
+  const inizia = [], dentro = [];
+  for (const p of catalogo || []) {
+    const n = p.nome_cerca || normalizza(p.nome);
+    if (n.indexOf(k) === 0) inizia.push(p);
+    else if (n.indexOf(k) > 0) dentro.push(p);
+    if (inizia.length >= 6) break;
+  }
+  return inizia.concat(dentro).slice(0, 6);
+}
+
+/* ---------- vista principale ---------- */
+
+const articolo = a => `
+  <div class="art ${a.stato === 'preso' ? 'preso' : ''}">
+    <button class="spunta ${a.stato === 'preso' ? 'on' : ''}" data-preso="${a.id}"></button>
+    <span class="tx"><strong>${esc(a.nome)}</strong>
+      <span>${esc(a.origine === 'iphone' ? "aggiunto dall'iPhone" :
+                   a.origine === 'ricorrente' ? 'articolo ricorrente' :
+                   a.origine === 'scorta' ? 'scorta bassa' : S.nomePersona(a.persona_id))}</span></span>
+    <span class="qd">${esc(a.quantita || '')}</span>
+    <div class="riga-azioni"><button data-mod-art="${a.id}">Modifica</button></div>
+  </div>`;
+
 function vistaLista(){
   const cats = S.categorie('spesa');
   const tutti = S.S.dati.spesa.articoli;
   const daPrendere = tutti.filter(a => a.stato === 'da_prendere');
+  const senza = tutti.filter(a => !a.categoria_id);
 
   const gruppi = cats.map(c => {
     const art = tutti.filter(a => a.categoria_id === c.id);
@@ -26,57 +75,70 @@ function vistaLista(){
       </div>`;
   }).join('');
 
-  const senza = tutti.filter(a => !a.categoria_id);
+  const daSmistare = senza.length ? `
+    <div class="gruppo aperto">
+      <button class="capo" data-gruppo="sp_altro">
+        <span class="emj">&#128230;</span><b>Da smistare</b>
+        <span class="avanz">${senza.length} senza reparto</span>
+        <span class="freccia"></span></button>
+      <div class="elenco"><div>${senza.map(a => `
+        <div class="art">
+          <button class="spunta ${a.stato === 'preso' ? 'on' : ''}" data-preso="${a.id}"></button>
+          <span class="tx"><strong>${esc(a.nome)}</strong><span>reparto da assegnare</span></span>
+          <span class="qd">${esc(a.quantita || '')}</span>
+          <div class="riga-azioni"><button data-smista="${a.id}">Dai un reparto</button></div>
+        </div>`).join('')}</div></div>
+    </div>` : '';
 
   return `<div class="griglia g-lato">
-    ${riq('Lista corrente', gruppi + (senza.length
-        ? `<div class="gruppo aperto"><button class="capo" data-gruppo="sp_altro">
-             <span class="emj">📦</span><b>Da smistare</b>
-             <span class="avanz">${senza.length}</span><span class="freccia"></span></button>
-           <div class="elenco"><div>${senza.map(articolo).join('')}</div></div></div>`
-        : '') || vuoto('La lista è vuota'),
+    ${riq('Lista corrente', (gruppi + daSmistare) || vuoto('La lista e vuota'),
       { raso: true, classe: 'tinta', colore: COLORE,
         meta: plurale(daPrendere.length, 'articolo da prendere', 'articoli da prendere') })}
 
     <div class="griglia" style="align-content:start">
       ${riq('Aggiungi alla lista', `
         <div style="display:flex;gap:9px">
-          <input type="text" id="nuovo-articolo" placeholder="Che cosa serve?" style="flex:1;min-width:0">
+          <input type="text" id="nuovo-articolo" placeholder="Che cosa serve?"
+                 autocomplete="off" value="${esc(scritto)}" style="flex:1;min-width:0">
           <button class="btn" style="background:var(--spesa)" data-aggiungi>Aggiungi</button>
         </div>
-        <p class="occhiello" style="margin:18px 0 10px">Comprati spesso</p>
-        <div class="etichette">
-          ${['Latte','Pane','Uova','Pannolini','Yogurt bambine','Strofinacci'].map(n =>
-            `<button class="et-i" data-veloce="${esc(n)}">${esc(n)}</button>`).join('')}
-        </div>`)}
-      ${riq('Dall\'iPhone', `<ul class="righe" style="margin:-16px -18px">
-        ${tutti.filter(a => a.origine === 'iphone').map(a =>
-          `<li><span class="tx"><strong>${esc(a.nome)}</strong><span>${esc(S.nomePersona(a.persona_id))}</span></span></li>`).join('')
-          || `<li><span class="tx"><span>Niente di nuovo dal telefono</span></span></li>`}
-      </ul>`)}
+        <div id="suggerimenti">${listaSuggerimenti()}</div>
+        <p class="nota">Il reparto lo assegna il catalogo da solo, anche a quello che detti dall'iPhone.
+        Se non lo conosce, l'articolo finisce in "Da smistare".</p>`)}
+
+      ${riq('Comprati spesso', frequenti === null
+        ? '<p class="vuoto">Carico…</p>'
+        : (frequenti.length
+            ? `<div class="etichette">${frequenti.map(f =>
+                `<button class="et-i" data-veloce="${esc(f.nome)}">${esc(f.nome)}
+                   <span style="color:var(--tenue);font-size:.78rem">${f.volte}</span></button>`).join('')}</div>`
+            : vuoto('Ancora pochi dati: comparira coi primi acquisti')),
+        { meta: frequenti && frequenti.length ? 'i piu aggiunti in casa' : '' })}
     </div>
   </div>`;
 }
 
-const articolo = a => `
-  <div class="art ${a.stato === 'preso' ? 'preso' : ''}">
-    <button class="spunta ${a.stato === 'preso' ? 'on' : ''}" data-preso="${a.id}"></button>
-    <span class="tx"><strong>${esc(a.nome)}</strong>
-      <span>${esc(a.origine === 'iphone' ? 'aggiunto dall\'iPhone' :
-                   a.origine === 'ricorrente' ? 'articolo ricorrente' :
-                   a.origine === 'scorta' ? 'scorta bassa' : S.nomePersona(a.persona_id))}</span></span>
-    <span class="qd">${esc(a.quantita || '')}</span>
-  </div>`;
+function listaSuggerimenti(){
+  if (!suggeriti.length) return '';
+  return `<p class="occhiello" style="margin:14px 0 8px">Suggerimenti</p>
+    <div class="etichette">${suggeriti.map(p => {
+      const c = S.categoria(p.categoria_id);
+      return `<button class="et-i" data-suggerito="${esc(p.nome)}">${esc(p.nome)}
+        <span style="color:var(--tenue);font-size:.78rem">${esc(c ? c.nome : '')}</span></button>`;
+    }).join('')}</div>`;
+}
+
+/* ---------- comando iPhone ---------- */
 
 function vistaIphone(){
   const url = location.origin + '/api/shortcut';
-  return `<div class="griglia g-lato">
+  return `<div class="griglia g-lato-l">
     ${riq('Il percorso del comando', `
       <ol style="list-style:none;margin:0;padding:0">
-        ${[['Tocchi l\'icona sulla schermata home','Nessuna app da aprire, nessun accesso da fare.'],
-           ['Il comando chiede: vedere o aggiungere','Due voci sole, si sceglie con un pollice.'],
-           ['Detti o scrivi che cosa serve','Anche più articoli separati dalla virgola.'],
-           ['La lista di casa si aggiorna','L\'iPad mostra il nuovo articolo entro pochi secondi.']]
+        ${[["Tocchi l'icona sulla schermata home", 'Nessuna app da aprire, nessun accesso da fare.'],
+           ['Il comando chiede: vedere o aggiungere', 'Due voci sole, si sceglie con un pollice.'],
+           ['Detti che cosa serve', 'Anche piu articoli separati dalla virgola.'],
+           ['Il reparto lo mette il server', "Il catalogo lo riconosce e lo mette al posto giusto."]]
           .map(([t, s], i) => `
           <li style="display:flex;gap:15px;padding-bottom:20px">
             <span style="width:30px;height:30px;border-radius:50%;background:var(--spesa);color:#fff;
@@ -88,85 +150,61 @@ function vistaIphone(){
       { classe: 'tinta', colore: COLORE })}
 
     <div class="griglia" style="align-content:start">
-      ${riq('Come appare sull\'iPhone', `
+      ${riq("Come appare sull'iPhone", `
         <div class="telefono">
           <div class="sbarra"><span>21:05</span><span>Comandi</span></div>
           <p class="dom">Spesa di casa<br>Che cosa vuoi fare?</p>
-          <div class="sc">👀 Vedi la lista</div>
-          <div class="sc pri">➕ Aggiungi qualcosa</div>
+          <div class="sc">&#128064; Vedi la lista</div>
+          <div class="sc pri">&#10133; Aggiungi qualcosa</div>
         </div>`)}
       ${riq('Collegamento', `<ul class="cfg" style="margin:-16px -18px">
-        ${rigaCfg('Stato', rete.collegata ? 'L\'app sta leggendo dal database.' : 'Al momento sta usando i dati locali.',
+        ${rigaCfg('Stato', rete.collegata ? 'L app sta leggendo dal database.' : 'Al momento usa i dati locali.',
           `<span class="pill ${rete.collegata ? 'verde' : 'ambra'}">${rete.collegata ? 'Collegata' : 'Non collegata'}</span>`)}
         ${rigaCfg('Chiave di casa', 'La stessa che metti nel comando rapido.',
           `<input type="password" id="campo-chiave" value="${esc(chiave())}" style="min-width:180px">`)}
         ${rigaCfg('', '', `<button class="btn piccolo" style="background:var(--spesa)" data-salva-chiave>Salva e riprova</button>`)}
       </ul>`)}
+      ${riq('Catalogo prodotti', `
+        <p style="margin:0 0 10px;font-size:.92rem">${(catalogo || []).length} prodotti riconosciuti in automatico.</p>
+        <p class="nota" style="margin:0">Quando dai un reparto a un articolo finito in "Da smistare",
+        il catalogo lo impara: la volta dopo lo riconosce anche dall'iPhone.</p>`)}
     </div>
   </div>`;
 }
 
-function vistaImpostazioni(){
-  return `<div class="griglia g-lato">
-    <div class="griglia" style="align-content:start">
-      ${riq('Reparti', `<div class="etichette">
-        ${S.categorie('spesa').map(c => `<span class="et-i">${c.icona} ${esc(c.nome)}</span>`).join('')}
-        <span class="et-i aggiungi">Aggiungi reparto</span></div>
-        <p class="nota">L'ordine dei reparti segue il percorso che fai in negozio: la lista si riordina da sola.</p>`,
-        { classe: 'tinta', colore: COLORE })}
-      ${riq('Articoli ricorrenti', `<ul class="cfg" style="margin:-16px -18px">
-        ${[['Detersivo lavatrice','Torna in lista ogni 4 settimane.'],
-           ['Pannolini taglia 5','Torna in lista ogni 2 settimane.'],
-           ['Sacchi umido','Torna in lista ogni mese.'],
-           ['Caffè macinato','Torna in lista ogni 2 settimane.']]
-          .map(([t, s]) => rigaCfg(t, s, interruttore(true, COLORE))).join('')}
-      </ul>`)}
-    </div>
-    <div class="griglia" style="align-content:start">
-      ${riq('Come si comporta la lista', `<ul class="cfg" style="margin:-16px -18px">
-        ${rigaCfg('Articoli presi', '', `<select><option selected>Restano in fondo</option><option>Spariscono subito</option></select>`)}
-        ${rigaCfg('Svuota dopo la spesa', 'La lista si azzera quando segni la spesa come conclusa.', interruttore(true, COLORE))}
-        ${rigaCfg('Unisci i doppioni', 'Se in due aggiungete la stessa cosa resta una riga sola.', interruttore(true, COLORE))}
-        ${rigaCfg('Scorte basse in lista', 'Gli articoli sotto soglia entrano da soli.', interruttore(true, COLORE))}
-        ${rigaCfg('Ricontrolla la lista ogni', '', `<select><option>15 secondi</option><option selected>30 secondi</option><option>1 minuto</option></select>`)}
-      </ul>`)}
-      ${riq('Chi può modificare', `<ul class="cfg" style="margin:-16px -18px">
-        ${S.S.dati.persone.filter(p => p.ruolo !== 'bambina').map(p =>
-          rigaCfg(p.nome, p.ruolo === 'collaboratrice' ? 'Solo aggiunta' : 'Aggiunge e conclude la spesa',
-                  interruttore(true, COLORE))).join('')}
-      </ul>`)}
-    </div>
-  </div>`;
-}
+/* ---------- modulo ---------- */
 
 export default {
   id: 'spesa',
   nome: 'Lista della spesa',
-  emoji: '🛒',
+  emoji: '\u{1F6D2}',
   colore: COLORE,
   sezioni: [
     { id: 'lista', nome: 'Lista' },
-    { id: 'iphone', nome: 'Comando iPhone' },
-    { id: 'impostazioni', nome: 'Impostazioni' }
+    { id: 'iphone', nome: 'Comando iPhone' }
   ],
 
   distintivo(){ return { n: S.spesaDaPrendere().length, caldo: false }; },
 
-  render(sezione){
-    if (sezione === 'iphone') return vistaIphone();
-    if (sezione === 'impostazioni') return vistaImpostazioni();
-    return vistaLista();
+  render(sezione, contesto){
+    caricaExtra(contesto && contesto.ridisegna);
+    return sezione === 'iphone' ? vistaIphone() : vistaLista();
   },
 
-  aggancia(root){
-    const aggiungi = nome => {
-      if (!nome || !nome.trim()) return;
-      S.aggiungiArticoloLocale(nome.trim(), '', null);
-      prova(api.aggiungiSpesa({ nome: nome.trim(), origine: 'tablet' }));
-      avviso(nome.trim() + ' aggiunto alla lista');
+  aggancia(root, contesto){
+    const aggiungi = async (nome, categoriaId) => {
+      const n = (nome || '').trim();
+      if (!n) return;
+      S.aggiungiArticoloLocale(n, '', categoriaId || null);
+      S.aggiungiRegistroLocale('spesa', 'aggiunto', n, null);
+      scritto = ''; suggeriti = [];
+      await prova(api.aggiungiSpesa({ nome: n, categoria_id: categoriaId || undefined, origine: 'tablet' }));
+      avviso(n + ' aggiunto alla lista');
+      // rilegge dal server, cosi si vede il reparto assegnato dal catalogo
+      S.carica(S.S.settimana, { silenzioso: true });
     };
 
-    root.addEventListener('click', e => {
+    root.addEventListener('click', async e => {
       const g = e.target.closest('[data-gruppo]');
       if (g) { g.closest('.gruppo').classList.toggle('aperto'); return; }
 
@@ -182,12 +220,68 @@ export default {
 
       if (e.target.closest('[data-aggiungi]')) {
         const campo = root.querySelector('#nuovo-articolo');
-        aggiungi(campo.value); campo.value = '';
+        await aggiungi(campo.value);
+        return;
+      }
+
+      const sug = e.target.closest('[data-suggerito]');
+      if (sug) {
+        const nome = sug.dataset.suggerito;
+        const p = (catalogo || []).find(x => x.nome === nome);
+        await aggiungi(nome, p && p.categoria_id);
         return;
       }
 
       const v = e.target.closest('[data-veloce]');
-      if (v) { aggiungi(v.dataset.veloce); return; }
+      if (v) { await aggiungi(v.dataset.veloce); return; }
+
+      // modifica di un articolo gia in lista
+      const mod = e.target.closest('[data-mod-art]');
+      if (mod) {
+        const a = S.S.dati.spesa.articoli.find(x => String(x.id) === mod.dataset.modArt);
+        const r = await modaleForm({
+          titolo: a.nome, colore: COLORE, permettiElimina: true,
+          valori: { nome: a.nome, quantita: a.quantita || '', categoria_id: a.categoria_id || '' },
+          campi: [
+            { nome:'nome', etichetta:'Che cosa', richiesto:true },
+            { nome:'quantita', etichetta:'Quantita', placeholder:'Es. 2 confezioni' },
+            { nome:'categoria_id', etichetta:'Reparto', tipo:'select',
+              opzioni: [{ id:'', nome:'Da smistare' }, ...S.categorie('spesa').map(c => ({ id:c.id, nome:c.nome }))] }
+          ]
+        });
+        if (!r) return;
+        if (r.azione === 'elimina') {
+          S.S.dati.spesa.articoli = S.S.dati.spesa.articoli.filter(x => String(x.id) !== String(a.id));
+          S.avvisa();
+          await prova(api.rimuoviSpesa(a.id));
+          avviso('Articolo tolto');
+        } else {
+          S.applicaSpesa(a.id, r.valori);
+          await prova(api.modificaSpesa(a.id, r.valori));
+          avviso('Articolo aggiornato');
+        }
+        return;
+      }
+
+      // assegna il reparto e lo insegna al catalogo
+      const sm = e.target.closest('[data-smista]');
+      if (sm) {
+        const a = S.S.dati.spesa.articoli.find(x => String(x.id) === sm.dataset.smista);
+        const r = await modaleForm({
+          titolo: a.nome, colore: COLORE,
+          sottotitolo: 'Il catalogo se lo ricorda: la prossima volta lo riconoscera da solo.',
+          valori: { categoria_id: S.categorie('spesa')[0].id },
+          campi: [{ nome:'categoria_id', etichetta:'In che reparto sta', tipo:'select',
+                    opzioni: S.categorie('spesa').map(c => ({ id:c.id, nome:c.nome })) }]
+        });
+        if (r?.azione !== 'salva') return;
+        S.applicaSpesa(a.id, { categoria_id: r.valori.categoria_id });
+        await prova(api.modificaSpesa(a.id, { categoria_id: r.valori.categoria_id }));
+        await prova(api.imparaProdotto({ nome: a.nome, categoria_id: r.valori.categoria_id }));
+        if (catalogo) catalogo.push({ nome: a.nome, nome_cerca: normalizza(a.nome), categoria_id: r.valori.categoria_id });
+        avviso('Reparto assegnato, e imparato per la prossima volta');
+        return;
+      }
 
       if (e.target.closest('[data-salva-chiave]')) {
         salvaChiave(root.querySelector('#campo-chiave').value.trim());
@@ -196,9 +290,23 @@ export default {
       }
     });
 
-    root.addEventListener('keydown', e => {
+    // suggerimenti mentre si scrive
+    root.addEventListener('input', e => {
+      if (e.target.id !== 'nuovo-articolo') return;
+      scritto = e.target.value;
+      const nuovi = cerca(scritto);
+      const cambiati = nuovi.length !== suggeriti.length ||
+        nuovi.some((p, i) => p.nome !== suggeriti[i].nome);
+      if (!cambiati) return;
+      suggeriti = nuovi;
+      const box = root.querySelector('#suggerimenti');
+      if (box) box.innerHTML = listaSuggerimenti();
+    });
+
+    root.addEventListener('keydown', async e => {
       if (e.key === 'Enter' && e.target.id === 'nuovo-articolo') {
-        aggiungi(e.target.value); e.target.value = '';
+        e.preventDefault();
+        await aggiungi(e.target.value);
       }
     });
   }

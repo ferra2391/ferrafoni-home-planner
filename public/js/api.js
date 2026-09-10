@@ -39,6 +39,18 @@ async function chiama(percorso, opzioni = {}){
   }
 }
 
+// Catalogo minimo per quando il server non risponde: l'app resta usabile.
+export const CATALOGO_DEMO = [
+  { nome:'Latte intero', nome_cerca:'latte intero', categoria_id:'sp_freschi' },
+  { nome:'Pane', nome_cerca:'pane', categoria_id:'sp_dispensa' },
+  { nome:'Uova', nome_cerca:'uova', categoria_id:'sp_freschi' },
+  { nome:'Pomodori', nome_cerca:'pomodori', categoria_id:'sp_ortofrutta' },
+  { nome:'Pannolini taglia 5', nome_cerca:'pannolini taglia 5', categoria_id:'sp_bambine' },
+  { nome:'Detersivo lavatrice', nome_cerca:'detersivo lavatrice', categoria_id:'sp_casa' },
+  { nome:'Gelato', nome_cerca:'gelato', categoria_id:'sp_surgelati' },
+  { nome:'Yogurt bambine', nome_cerca:'yogurt bambine', categoria_id:'sp_freschi' }
+];
+
 export async function caricaStato(settimana){
   try {
     const d = await chiama('/stato?settimana=' + settimana);
@@ -111,6 +123,20 @@ export const api = {
   creaPagamento   : d => chiama('/pagamenti', { method:'POST', body: JSON.stringify(d) }),
   modificaPagamento: d => chiama('/pagamenti', { method:'PATCH', body: JSON.stringify(d) }),
   eliminaPagamento: id => chiama('/pagamenti?id=' + id, { method:'DELETE' }),
+
+  // catalogo e statistiche della spesa
+  catalogo        : async () => {
+    try { return await chiama('/spesa/catalogo'); }
+    catch { return { prodotti: CATALOGO_DEMO }; }
+  },
+  imparaProdotto  : d => chiama('/spesa/catalogo', { method:'POST', body: JSON.stringify(d) }),
+  frequenti       : async () => {
+    try { return await chiama('/spesa/frequenti'); }
+    catch { return { frequenti: [
+      { nome:'Latte intero', volte:12 }, { nome:'Pane', volte:9 }, { nome:'Uova', volte:7 },
+      { nome:'Pannolini taglia 5', volte:6 }, { nome:'Yogurt bambine', volte:5 }
+    ] }; }
+  },
 
   // note libere
   creaNota        : d => chiama('/note', { method:'POST', body: JSON.stringify(d) }),
