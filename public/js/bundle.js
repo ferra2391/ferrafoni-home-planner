@@ -1048,7 +1048,7 @@
       <span style="width:78px">${barra(voci.length ? fatte / voci.length * 100 : 0, COLORE)}</span>
       <span class="freccia"></span>
     </button>
-    <div class="elenco"><div>${voci.map(compito).join("")}</div></div>
+    <div class="elenco">${aperto ? voci.map(compito).join("") : ""}</div>
   </div>`;
   }
   function compito(v) {
@@ -1258,7 +1258,7 @@
             <span class="emj">${c.icona}</span><b>${esc(c.nome)}</b>
             <span class="avanz">${voci.filter((v) => v.categoria_id === c.id).length} voci</span>
             <span class="freccia"></span></button>
-          <div class="elenco"><div>${voci.filter((v) => v.categoria_id === c.id).map((v) => `
+          <div class="elenco">${aperti.has("cfg_" + c.id) ? voci.filter((v) => v.categoria_id === c.id).map((v) => `
             <div class="compito" style="min-height:64px">
               <span class="emj">${v.icona}</span>
               <span class="tx"><strong>${esc(v.nome)}</strong><span>${FREQ[v.frequenza]}</span></span>
@@ -1266,7 +1266,7 @@
                 <button data-mod-voce="${v.id}" title="Modifica">&#9998;</button>
                 <button data-elimina-voce="${v.id}" title="Togli dalla checklist" style="color:var(--rosso)">&#128465;</button>
               </div>
-            </div>`).join("")}</div></div>
+            </div>`).join("") : ""}</div>
         </div>`).join("") + `<div style="padding:16px 18px;border-top:1px solid var(--linea-tenue)">
            <button class="btn chiaro pieno" data-nuova-voce>Aggiungi una voce</button>
            <p class="nota">Ogni voce ha la sua frequenza e la sua zona. La frequenza decide quando la voce
@@ -1390,7 +1390,7 @@
         if (g2) {
           const id = g2.dataset.gruppo;
           aperti.has(id) ? aperti.delete(id) : aperti.add(id);
-          g2.closest(".gruppo").classList.toggle("aperto");
+          contesto.ridisegna();
           return;
         }
         const ms = e.target.closest("[data-mese]");
@@ -2803,19 +2803,35 @@
     disegnaTestata();
     const corpo = $("#corpo");
     const contesto = { vai, ridisegna: disegna };
+    const scorri = $("#scorri");
+    const posizione = scorri.scrollTop;
     corpo.innerHTML = opzioni.silenzioso ? m.render(vista.sezione, contesto) : `<div class="entra">${m.render(vista.sezione, contesto)}</div>`;
+    if (posizione) scorri.scrollTop = posizione;
     if (!agganciati.has(m.id) && m.aggancia) {
-      m.aggancia(corpo, { vai, ridisegna: disegna });
+      m.aggancia(radicePerModulo(m.id), { vai, ridisegna: disegna });
       m.ridisegna = disegna;
       agganciati.add(m.id);
     }
+  }
+  function radicePerModulo(idModulo) {
+    const corpo = $("#corpo");
+    return {
+      addEventListener(tipo, gestore, opzioni) {
+        corpo.addEventListener(tipo, (e) => {
+          if (vista.modulo !== idModulo) return;
+          gestore(e);
+        }, opzioni);
+      },
+      querySelector: (sel) => corpo.querySelector(sel),
+      querySelectorAll: (sel) => corpo.querySelectorAll(sel)
+    };
   }
   function vai(idModulo, idSezione) {
     vista.modulo = idModulo;
     vista.sezione = idSezione || modulo(idModulo).sezioni[0].id;
     if (STRETTO()) menu(false);
-    $("#scorri").scrollTop = 0;
     disegna();
+    $("#scorri").scrollTop = 0;
   }
   var STRETTO = () => window.innerWidth <= 1240;
   function menu(apri) {

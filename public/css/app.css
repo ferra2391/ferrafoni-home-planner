@@ -124,9 +124,8 @@
   transform:rotate(45deg);transition:transform .25s ease;flex:none;margin-left:4px}
 .tessera.aperta .freccia{transform:rotate(-135deg)}
 
-.tessera .corpo{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.2,.8,.3,1)}
-.tessera.aperta .corpo{grid-template-rows:1fr}
-.tessera .corpo>div{overflow:hidden}
+.tessera .corpo{display:none}
+.tessera.aperta .corpo{display:block}
 .tessera .corpo .righe{border-top:1px solid var(--linea-tenue)}
 .tessera .piedino{display:flex;justify-content:space-between;align-items:center;gap:10px;
   padding:13px 18px;border-top:1px solid var(--linea-tenue);background:#F7F5EE}
@@ -152,9 +151,8 @@
 .gruppo>.capo .freccia{width:10px;height:10px;border-right:2px solid var(--tenue);border-bottom:2px solid var(--tenue);
   transform:rotate(45deg);transition:transform .25s}
 .gruppo.aperto>.capo .freccia{transform:rotate(-135deg)}
-.gruppo .elenco{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s cubic-bezier(.2,.8,.3,1)}
-.gruppo.aperto .elenco{grid-template-rows:1fr}
-.gruppo .elenco>div{overflow:hidden}
+.gruppo .elenco{display:none}
+.gruppo.aperto .elenco{display:block}
 
 .compito{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--linea-tenue);min-height:74px}
 .compito:last-child{border-bottom:0}
@@ -355,6 +353,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
    (iPad in orizzontale: 1024px, non 1400)
    ============================================================ */
 
+button,.spunta,.voce-cal,.mese-cella{touch-action:manipulation}
 .apri-menu{width:46px;height:46px;border-radius:11px;border:1px solid var(--linea);
   background:var(--pannello);display:none;flex-direction:column;justify-content:center;
   align-items:center;flex:none;margin-right:14px}
@@ -366,6 +365,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;
 .app.menu-chiuso .colonna{opacity:0;pointer-events:none;overflow:hidden;padding:0}
 
 @media (max-width:1240px){
+  .entra{animation:none}
+  .tessera:hover,.urg:hover{transform:none}
   .apri-menu{display:flex}
   .testata{padding:12px 18px}
   .testata .facce{display:none}

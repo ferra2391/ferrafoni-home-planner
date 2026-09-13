@@ -27,6 +27,8 @@ function gruppo(cat, voci){
   const aperto = aperti.has(cat.id);
   const tutte = fatte === voci.length;
 
+  // Le voci di una zona chiusa non vengono nemmeno costruite: su iPad
+  // disegnare trenta righe a ogni tocco e' la causa principale della lentezza.
   return `
   <div class="gruppo ${aperto ? 'aperto' : ''}">
     <button class="capo" data-gruppo="${cat.id}">
@@ -36,7 +38,7 @@ function gruppo(cat, voci){
       <span style="width:78px">${barra(voci.length ? fatte / voci.length * 100 : 0, COLORE)}</span>
       <span class="freccia"></span>
     </button>
-    <div class="elenco"><div>${voci.map(compito).join('')}</div></div>
+    <div class="elenco">${aperto ? voci.map(compito).join('') : ''}</div>
   </div>`;
 }
 
@@ -276,7 +278,7 @@ function vistaImpostazioni(){
             <span class="emj">${c.icona}</span><b>${esc(c.nome)}</b>
             <span class="avanz">${voci.filter(v => v.categoria_id === c.id).length} voci</span>
             <span class="freccia"></span></button>
-          <div class="elenco"><div>${voci.filter(v => v.categoria_id === c.id).map(v => `
+          <div class="elenco">${aperti.has('cfg_' + c.id) ? voci.filter(v => v.categoria_id === c.id).map(v => `
             <div class="compito" style="min-height:64px">
               <span class="emj">${v.icona}</span>
               <span class="tx"><strong>${esc(v.nome)}</strong><span>${FREQ[v.frequenza]}</span></span>
@@ -284,7 +286,7 @@ function vistaImpostazioni(){
                 <button data-mod-voce="${v.id}" title="Modifica">&#9998;</button>
                 <button data-elimina-voce="${v.id}" title="Togli dalla checklist" style="color:var(--rosso)">&#128465;</button>
               </div>
-            </div>`).join('')}</div></div>
+            </div>`).join('') : ''}</div>
         </div>`).join('') +
         `<div style="padding:16px 18px;border-top:1px solid var(--linea-tenue)">
            <button class="btn chiaro pieno" data-nuova-voce>Aggiungi una voce</button>
@@ -417,7 +419,7 @@ export default {
       if (g) {
         const id = g.dataset.gruppo;
         aperti.has(id) ? aperti.delete(id) : aperti.add(id);
-        g.closest('.gruppo').classList.toggle('aperto');
+        contesto.ridisegna();
         return;
       }
 

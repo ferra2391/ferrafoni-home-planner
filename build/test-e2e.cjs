@@ -38,8 +38,14 @@ async function main(){
   click(q('[data-sezione="impostazioni"]'));
   await new Promise(r => setTimeout(r, 50));
 
-  prova('la vista impostazioni pulizie ha voci con pulsante modifica', !!q('[data-mod-voce]'));
   prova('c\'è il pulsante "Aggiungi una voce"', !!q('[data-nuova-voce]'));
+
+  // le zone partono chiuse per non costruire trenta voci a ogni tocco:
+  // per vedere le voci bisogna aprirne una
+  prova('le zone delle impostazioni partono chiuse', !q('[data-mod-voce]'));
+  click(q('#corpo [data-gruppo]'));
+  await new Promise(r => setTimeout(r, 80));
+  prova('aprendo una zona compaiono le voci con Modifica', !!q('[data-mod-voce]'));
 
   const primaVoce = q('[data-mod-voce]');
   click(primaVoce);

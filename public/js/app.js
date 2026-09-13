@@ -85,24 +85,51 @@ function disegna(_stato, opzioni = {}){
   // il contesto passato al modulo deve permettergli anche di ridisegnarsi:
   // serve a chi carica dati in un secondo momento, come il catalogo della spesa
   const contesto = { vai, ridisegna: disegna };
+
+  // Sostituire il contenuto azzera lo scorrimento: lo si rimette dov'era,
+  // altrimenti dopo ogni spunta la pagina salta in cima e si perde il segno.
+  const scorri = $('#scorri');
+  const posizione = scorri.scrollTop;
+
   corpo.innerHTML = opzioni.silenzioso
     ? m.render(vista.sezione, contesto)
     : `<div class="entra">${m.render(vista.sezione, contesto)}</div>`;
 
+  if (posizione) scorri.scrollTop = posizione;
+
   // Ogni modulo si aggancia una sola volta, con delega sul contenitore.
+  // Il contenitore pero' e' lo stesso per tutti: senza filtro, il gestore
+  // delle pulizie risponderebbe anche ai pulsanti della spesa, e viceversa.
+  // Era la causa dei pulsanti che a volte non facevano niente.
   if (!agganciati.has(m.id) && m.aggancia) {
-    m.aggancia(corpo, { vai, ridisegna: disegna });
+    m.aggancia(radicePerModulo(m.id), { vai, ridisegna: disegna });
     m.ridisegna = disegna;
     agganciati.add(m.id);
   }
+}
+
+// Piccolo involucro attorno al contenitore: consegna gli eventi a un modulo
+// soltanto quando e' quello davvero a schermo.
+function radicePerModulo(idModulo){
+  const corpo = $('#corpo');
+  return {
+    addEventListener(tipo, gestore, opzioni){
+      corpo.addEventListener(tipo, e => {
+        if (vista.modulo !== idModulo) return;
+        gestore(e);
+      }, opzioni);
+    },
+    querySelector: sel => corpo.querySelector(sel),
+    querySelectorAll: sel => corpo.querySelectorAll(sel)
+  };
 }
 
 export function vai(idModulo, idSezione){
   vista.modulo = idModulo;
   vista.sezione = idSezione || modulo(idModulo).sezioni[0].id;
   if (STRETTO()) menu(false);
-  $('#scorri').scrollTop = 0;
   disegna();
+  $('#scorri').scrollTop = 0;
 }
 
 /* ---------- eventi generali ---------- */
