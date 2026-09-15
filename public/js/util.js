@@ -54,3 +54,26 @@ export function avviso(testo){
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('on'), 2600);
 }
+
+// Dimensione del testo di tutta l'app. Su iPad serve poterlo rimpicciolire
+// per far stare piu' contenuto senza scorrere.
+export const MISURE_TESTO = [
+  { id:'piccolo', nome:'Piccolo' },
+  { id:'medio',   nome:'Ridotto' },
+  { id:'normale', nome:'Normale' },
+  { id:'grande',  nome:'Grande' }
+];
+
+export const misuraTesto = () => {
+  try { return localStorage.getItem('ferrafoni.testo') || 'normale'; }
+  catch (e) { return 'normale'; }
+};
+
+export function applicaMisuraTesto(misura){
+  const c = document.body.classList;
+  c.remove('testo-piccolo', 'testo-medio', 'testo-grande');
+  if (misura === 'piccolo') c.add('testo-piccolo');
+  else if (misura === 'medio') c.add('testo-medio');
+  else if (misura === 'grande') c.add('testo-grande');
+  try { localStorage.setItem('ferrafoni.testo', misura); } catch (e) { /* niente */ }
+}

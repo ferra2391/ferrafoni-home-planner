@@ -118,15 +118,20 @@ export function eventiDelGiorno(quando = OGGI){
 /* ---------- modifiche locali immediate ---------- */
 // L'interfaccia risponde subito, la scrittura sul database viaggia dopo.
 
-export function applicaSpunta(voceId, stato, quando, personaId){
+// Con silenzioso = true non avvisa nessuno: chi chiama aggiorna da se' la riga
+// toccata, senza far ridisegnare tutta la pagina. Su iPad e' la differenza fra
+// una spunta immediata e mezzo secondo di pagina che sobbalza.
+export function applicaSpunta(voceId, stato, quando, personaId, opzioni = {}){
   const arr = S.dati.pulizie.spunte;
   const i = arr.findIndex(s => s.voce_id === voceId);
+  const nota = i >= 0 ? arr[i].nota : null;
   if (stato === null) { if (i >= 0) arr.splice(i, 1); }
   else {
-    const riga = { voce_id: voceId, settimana: S.settimana, stato, data: iso(quando), persona_id: personaId };
+    const riga = { voce_id: voceId, settimana: S.settimana, stato, data: iso(quando),
+                   persona_id: personaId, nota };
     i >= 0 ? arr[i] = riga : arr.push(riga);
   }
-  avvisa();
+  if (!opzioni.silenzioso) avvisa();
 }
 
 export function applicaCambioBiancheria(id, quando){

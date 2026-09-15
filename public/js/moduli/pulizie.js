@@ -4,7 +4,7 @@
 import { esc, gm, breve, iso, piu, lunedi, OGGI, scarto, plurale, avviso } from '../util.js';
 import { riq, tabella, anello, barra, interruttore, rigaCfg, vuoto } from '../ui.js';
 import { modaleData, modaleForm } from '../ui.js';
-import { api, prova } from '../api.js';
+import { api, prova, ultimoErrore } from '../api.js';
 import * as S from '../stato.js';
 
 const COLORE = 'var(--pulizie)';
@@ -12,6 +12,12 @@ const FREQ = {
   giornaliera: 'ogni giorno', settimanale: 'ogni settimana', quindicinale: 'ogni 2 settimane',
   mensile: 'ogni mese', trimestrale: 'ogni 3 mesi', stagionale: 'a ogni cambio stagione'
 };
+
+// Ordine delle cadenze: serve a mettere vicine le lavorazioni con la stessa
+// frequenza, cosi nelle due colonne si accompagnano per riga.
+const ORDINE_FREQ = { giornaliera:0, settimanale:1, quindicinale:2, mensile:3, trimestrale:4, stagionale:5 };
+const perCadenza = (a, b) =>
+  (ORDINE_FREQ[a.frequenza] ?? 9) - (ORDINE_FREQ[b.frequenza] ?? 9) || (a.ordine - b.ordine);
 
 const aperti = new Set();
 let primaVolta = true;
@@ -38,7 +44,7 @@ function gruppo(cat, voci){
       <span style="width:78px">${barra(voci.length ? fatte / voci.length * 100 : 0, COLORE)}</span>
       <span class="freccia"></span>
     </button>
-    <div class="elenco">${aperto ? voci.map(compito).join('') : ''}</div>
+    <div class="elenco">${aperto ? voci.slice().sort(perCadenza).map(compito).join('') : ''}</div>
   </div>`;
 }
 
@@ -63,6 +69,52 @@ function compito(v){
       <button data-nota-voce="${v.id}" class="${s?.nota ? 'n-on' : ''}">Note</button>
     </span>
   </div>`;
+}
+
+// Aggiorna la sola riga toccata, il contatore della sua zona e la percentuale
+// in alto. Niente ridisegno: la pagina non si muove e la spunta e' immediata.
+function aggiornaRiga(root, voceId){
+  const v = S.S.dati.pulizie.voci.find(x => x.id === voceId);
+  if (!v) return false;
+
+  const bottone = root.querySelector('[data-voce="' + voceId + '"]');
+  const riga = bottone && bottone.closest('.compito');
+  if (!riga) return false;
+
+  const contenitore = riga.parentNode;
+  const provvisorio = document.createElement('div');
+  provvisorio.innerHTML = compito(v);
+  contenitore.replaceChild(provvisorio.firstElementChild, riga);
+
+  // contatore e barra della zona
+  const cat = S.categoria(v.categoria_id);
+  if (cat) {
+    const voci = S.S.dati.pulizie.voci.filter(x => x.categoria_id === cat.id);
+    const fatte = voci.filter(x => S.spunta(x.id) && S.spunta(x.id).stato === 'fatto').length;
+    const capo = root.querySelector('[data-gruppo="' + cat.id + '"]');
+    if (capo) {
+      const et = capo.querySelector('.avanz');
+      if (et) et.textContent = fatte + ' di ' + voci.length + (fatte === voci.length ? ' · completata' : '');
+      const barra = capo.querySelector('.barra i');
+      if (barra) barra.style.width = (voci.length ? fatte / voci.length * 100 : 0) + '%';
+    }
+  }
+
+  // anello e testo della settimana
+  const av = S.avanzamentoPulizie();
+  const cerchio = root.querySelector('.anello .avanti');
+  if (cerchio) {
+    const r = Number(cerchio.getAttribute('r'));
+    const c = 2 * Math.PI * r;
+    cerchio.setAttribute('stroke-dashoffset', String(c * (1 - av.percento / 100)));
+  }
+  const etichetta = root.querySelector('.settimana-barra b[style*="position:absolute"]');
+  if (etichetta) etichetta.textContent = av.percento + '%';
+  const sotto = root.querySelector('.settimana-barra .et span');
+  if (sotto) sotto.textContent = sotto.textContent.replace(/\d+ voc[ei] da fare/,
+    plurale(av.restanti, 'voce da fare', 'voci da fare'));
+
+  return true;
 }
 
 function barraSettimana(){
@@ -116,49 +168,49 @@ function bannerConto(){
   </div>`;
 }
 
-function cardNote(){
-  const lista = S.note('pulizie');
-  return riq('Note per chi pulisce',
-    (lista.length ? lista.map(n => `
-      <div class="log-riga">
-        <span class="log-punto" style="--c:${COLORE}"></span>
-        <span class="tx"><strong>${esc(n.testo)}</strong></span>
-        <div class="riga-azioni">
-          <button data-mod-nota="${n.id}" title="Modifica">&#9998;</button>
-          <button data-elimina-nota="${n.id}" title="Elimina" style="color:var(--rosso)">&#128465;</button>
-        </div>
-      </div>`).join('') : `<p class="vuoto">Nessuna nota</p>`) +
-    `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue);display:flex;gap:9px">
-       <input type="text" id="nuova-nota" placeholder="Scrivi una nota..." style="flex:1;min-width:0">
-       <button class="btn" style="background:${COLORE}" data-aggiungi-nota>Aggiungi</button>
-     </div>`,
-    { raso: true, meta: lista.length ? lista.length + ' note' : '' });
-}
-
-// Le note della settimana vivono nella tabella note, con il modulo che porta
+// Le note della settimana stanno nella tabella note, con il modulo che porta
 // dentro la data del lunedi: cosi ogni settimana ha le sue e restano nello storico.
 const chiaveNote = sett => 'pulizie-sett-' + sett;
 
-function cardNoteSettimana(){
+// Una sola card: in alto le note di questa settimana, sotto le indicazioni fisse.
+function cardNote(){
+  const fisse = S.note('pulizie');
   const mia = S.note(chiaveNote(S.S.settimana))[0];
   const settPrec = iso(piu(new Date(S.S.settimana + 'T00:00:00'), -7));
   const prec = S.note(chiaveNote(settPrec))[0];
 
   return riq('Note pulizie',
-    `<div style="padding:0 0 4px">
+    `<div style="padding:16px 18px">
+       <p class="occhiello" style="margin:0 0 7px">Questa settimana</p>
        ${mia
          ? `<p style="margin:0;white-space:pre-wrap;font-size:.93rem">${esc(mia.testo)}</p>`
          : `<p style="margin:0;color:var(--tenue);font-size:.9rem">Nessuna nota per questa settimana.</p>`}
+       ${prec ? `
+       <div style="margin-top:14px;padding:11px 13px;background:#F3F0E8;border-radius:10px">
+         <p class="occhiello" style="margin:0 0 5px">Rimasto indietro dalla settimana scorsa</p>
+         <p style="margin:0;white-space:pre-wrap;font-size:.86rem;font-style:italic">${esc(prec.testo)}</p>
+       </div>` : ''}
+       <div style="margin-top:12px">
+         <button class="btn chiaro pieno" data-note-settimana>${mia ? 'Modifica le note della settimana' : 'Scrivi una nota per questa settimana'}</button>
+       </div>
      </div>
-     ${prec ? `
-     <div style="margin-top:16px;padding:12px 14px;background:#F3F0E8;border-radius:10px">
-       <p class="occhiello" style="margin:0 0 5px">Rimasto indietro dalla settimana scorsa</p>
-       <p style="margin:0;white-space:pre-wrap;font-size:.88rem;font-style:italic">${esc(prec.testo)}</p>
-     </div>` : ''}
-     <div style="margin-top:14px">
-       <button class="btn chiaro pieno" data-note-settimana>${mia ? 'Modifica le note' : 'Scrivi una nota'}</button>
+
+     <p class="occhiello" style="margin:0;padding:12px 18px 8px;border-top:1px solid var(--linea-tenue);background:#F7F5EE">
+       Indicazioni fisse per chi pulisce</p>
+     ${fisse.length ? fisse.map(n => `
+       <div class="log-riga">
+         <span class="log-punto" style="--c:${COLORE}"></span>
+         <span class="tx"><strong>${esc(n.testo)}</strong></span>
+         <div class="riga-azioni">
+           <button data-mod-nota="${n.id}">Modifica</button>
+           <button data-elimina-nota="${n.id}" class="pericolo">Elimina</button>
+         </div>
+       </div>`).join('') : `<p class="vuoto">Nessuna indicazione fissa</p>`}
+     <div style="padding:14px 18px;border-top:1px solid var(--linea-tenue);display:flex;gap:9px">
+       <input type="text" id="nuova-nota" placeholder="Aggiungi un indicazione fissa" style="flex:1;min-width:0">
+       <button class="btn" style="background:${COLORE}" data-aggiungi-nota>Aggiungi</button>
      </div>`,
-    { classe: 'tinta', colore: COLORE,
+    { raso: true, classe: 'tinta', colore: COLORE,
       meta: breve(new Date(S.S.settimana + 'T00:00:00')) + ' - ' + breve(piu(new Date(S.S.settimana + 'T00:00:00'), 6)) });
 }
 
@@ -197,7 +249,6 @@ function vistaChecklist(){
           `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue)">
              <button class="btn chiaro pieno" data-nuova-giornata>Aggiungi giornata</button></div>`,
           { raso: true, meta: String(totale).replace('.', ',') + ' ore a ' + nomeMeseSett })}
-        ${cardNoteSettimana()}
         ${cardNote()}
       </div>
     </div>`;
@@ -452,10 +503,11 @@ export default {
         const v = S.S.dati.pulizie.voci.find(x => x.id === voce);
 
         // Se tocco di nuovo lo stato gia attivo, tolgo la spunta senza chiedere altro.
-        if (attuale?.stato === tipo) {
-          S.applicaSpunta(voce, null);
-          prova(api.togliSpunta(voce, S.S.settimana));
-          avviso('Spunta tolta');
+        if (attuale && attuale.stato === tipo) {
+          S.applicaSpunta(voce, null, null, null, { silenzioso: true });
+          if (!aggiornaRiga(root, voce)) contesto.ridisegna();
+          const tolto = await prova(api.togliSpunta(voce, S.S.settimana));
+          avviso(tolto ? 'Spunta tolta' : 'Non salvato: ' + (ultimoErrore.messaggio || 'errore'));
           return;
         }
 
@@ -478,11 +530,19 @@ export default {
           return;
         }
 
-        S.applicaSpunta(voce, tipo, r.data, r.persona);
-        S.aggiungiRegistroLocale('pulizie', tipo, v?.nome || voce, r.persona);
-        prova(api.spuntaPulizia({ voce_id: voce, settimana: S.S.settimana, stato: tipo,
-                                  data: iso(r.data), persona_id: r.persona }));
-        avviso((tipo === 'fatto' ? 'Fatto il ' : 'Parziale dal ') + gm(r.data));
+        S.applicaSpunta(voce, tipo, r.data, r.persona, { silenzioso: true });
+        if (!aggiornaRiga(root, voce)) contesto.ridisegna();
+
+        const salvato = await prova(api.spuntaPulizia({
+          voce_id: voce, settimana: S.S.settimana, stato: tipo,
+          data: iso(r.data), persona_id: r.persona }));
+
+        if (salvato) {
+          S.aggiungiRegistroLocale('pulizie', tipo, (v && v.nome) || voce, r.persona);
+          avviso((tipo === 'fatto' ? 'Fatto il ' : 'Parziale dal ') + gm(r.data));
+        } else {
+          avviso('Non salvato: ' + (ultimoErrore.messaggio || 'errore'));
+        }
         return;
       }
 

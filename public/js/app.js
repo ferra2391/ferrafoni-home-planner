@@ -1,7 +1,7 @@
 // Avvio dell'applicazione: colonna dei moduli, schede della sezione,
 // ridisegno quando lo stato cambia. Nessun modulo tocca il DOM degli altri.
 
-import { $, $$, esc, GG, MM, OGGI } from './util.js';
+import { $, $$, esc, GG, MM, OGGI, applicaMisuraTesto, misuraTesto } from './util.js';
 import { agganciaModale, agganciaModaleForm } from './ui.js';
 import { MODULI, modulo } from './moduli/indice.js';
 import * as S from './stato.js';
@@ -95,7 +95,12 @@ function disegna(_stato, opzioni = {}){
     ? m.render(vista.sezione, contesto)
     : `<div class="entra">${m.render(vista.sezione, contesto)}</div>`;
 
-  if (posizione) scorri.scrollTop = posizione;
+  if (posizione) {
+    scorri.scrollTop = posizione;
+    // Safari 12 a volte azzera lo scorrimento dopo aver ricalcolato le altezze:
+    // lo si rimette anche al fotogramma successivo.
+    requestAnimationFrame(() => { if (scorri.scrollTop !== posizione) scorri.scrollTop = posizione; });
+  }
 
   // Ogni modulo si aggancia una sola volta, con delega sul contenitore.
   // Il contenitore pero' e' lo stesso per tutti: senza filtro, il gestore
@@ -202,7 +207,7 @@ function verificaFlexGap(){
 
 async function avvia(){
   verificaFlexGap();
-  if (localStorage.getItem('ferrafoni.testoGrande') === '1') document.body.classList.add('testo-grande');
+  applicaMisuraTesto(misuraTesto());
   agganciaGuscio();
   agganciaModale();
   agganciaModaleForm();

@@ -156,9 +156,22 @@ export const api = {
 // sparisce dalla schermata.
 export const scritture = { aperte: 0 };
 
+// Motivo dell'ultima scrittura fallita: serve a dirlo all'utente invece di
+// lasciare che la modifica sparisca da sola alla ricarica successiva.
+export const ultimoErrore = { messaggio: null };
+
 export async function prova(promessa){
   scritture.aperte++;
-  try { await promessa; return true; }
-  catch { return false; }
-  finally { scritture.aperte--; }
+  try {
+    await promessa;
+    ultimoErrore.messaggio = null;
+    return true;
+  } catch (e) {
+    ultimoErrore.messaggio = e && e.name === 'AbortError'
+      ? 'il server non ha risposto in tempo'
+      : ((e && e.message) || 'errore di collegamento');
+    return false;
+  } finally {
+    scritture.aperte--;
+  }
 }

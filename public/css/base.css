@@ -57,6 +57,8 @@ body{
   overflow:hidden;
   -webkit-tap-highlight-color:transparent;
 }
+body.testo-piccolo{--scala:.88}
+body.testo-medio{--scala:.95}
 body.testo-grande{--scala:1.12}
 
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;-webkit-appearance:none}

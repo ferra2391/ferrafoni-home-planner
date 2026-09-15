@@ -152,7 +152,10 @@
   transform:rotate(45deg);transition:transform .25s}
 .gruppo.aperto>.capo .freccia{transform:rotate(-135deg)}
 .gruppo .elenco{display:none}
-.gruppo.aperto .elenco{display:block}
+.gruppo.aperto .elenco{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.gruppo.aperto .elenco > .compito:nth-child(odd){border-right:1px solid var(--linea-tenue)}
+@media (max-width:760px){.gruppo.aperto .elenco{grid-template-columns:minmax(0,1fr)}
+  .gruppo.aperto .elenco > .compito{border-right:0}}
 
 .compito{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--linea-tenue);min-height:74px}
 .compito:last-child{border-bottom:0}

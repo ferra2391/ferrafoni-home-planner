@@ -85,6 +85,30 @@
     clearTimeout(el._t);
     el._t = setTimeout(() => el.classList.remove("on"), 2600);
   }
+  var MISURE_TESTO = [
+    { id: "piccolo", nome: "Piccolo" },
+    { id: "medio", nome: "Ridotto" },
+    { id: "normale", nome: "Normale" },
+    { id: "grande", nome: "Grande" }
+  ];
+  var misuraTesto = () => {
+    try {
+      return localStorage.getItem("ferrafoni.testo") || "normale";
+    } catch (e) {
+      return "normale";
+    }
+  };
+  function applicaMisuraTesto(misura) {
+    const c = document.body.classList;
+    c.remove("testo-piccolo", "testo-medio", "testo-grande");
+    if (misura === "piccolo") c.add("testo-piccolo");
+    else if (misura === "medio") c.add("testo-medio");
+    else if (misura === "grande") c.add("testo-grande");
+    try {
+      localStorage.setItem("ferrafoni.testo", misura);
+    } catch (e) {
+    }
+  }
 
   // public/js/ui.js
   var riq = (titolo, corpo, opzioni = {}) => `
@@ -513,12 +537,15 @@
     registro: (modulo2, limite) => chiama(`/registro?${modulo2 ? "modulo=" + modulo2 + "&" : ""}limite=${limite || 80}`)
   };
   var scritture = { aperte: 0 };
+  var ultimoErrore = { messaggio: null };
   async function prova(promessa) {
     scritture.aperte++;
     try {
       await promessa;
+      ultimoErrore.messaggio = null;
       return true;
     } catch (e) {
+      ultimoErrore.messaggio = e && e.name === "AbortError" ? "il server non ha risposto in tempo" : e && e.message || "errore di collegamento";
       return false;
     } finally {
       scritture.aperte--;
@@ -644,16 +671,24 @@
     const g2 = iso(quando2);
     return (((_a = S.dati) == null ? void 0 : _a.eventi) || []).filter((e) => e.inizio.slice(0, 10) === g2).sort((a, b) => a.inizio.localeCompare(b.inizio));
   }
-  function applicaSpunta(voceId, stato, quando2, personaId) {
+  function applicaSpunta(voceId, stato, quando2, personaId, opzioni = {}) {
     const arr = S.dati.pulizie.spunte;
     const i = arr.findIndex((s) => s.voce_id === voceId);
+    const nota = i >= 0 ? arr[i].nota : null;
     if (stato === null) {
       if (i >= 0) arr.splice(i, 1);
     } else {
-      const riga = { voce_id: voceId, settimana: S.settimana, stato, data: iso(quando2), persona_id: personaId };
+      const riga = {
+        voce_id: voceId,
+        settimana: S.settimana,
+        stato,
+        data: iso(quando2),
+        persona_id: personaId,
+        nota
+      };
       i >= 0 ? arr[i] = riga : arr.push(riga);
     }
-    avvisa();
+    if (!opzioni.silenzioso) avvisa();
   }
   function applicaSpesa(id, campi) {
     const a = S.dati.spesa.articoli.find((x) => x.id === id);
@@ -1015,6 +1050,11 @@
     trimestrale: "ogni 3 mesi",
     stagionale: "a ogni cambio stagione"
   };
+  var ORDINE_FREQ = { giornaliera: 0, settimanale: 1, quindicinale: 2, mensile: 3, trimestrale: 4, stagionale: 5 };
+  var perCadenza = (a, b) => {
+    var _a, _b;
+    return ((_a = ORDINE_FREQ[a.frequenza]) != null ? _a : 9) - ((_b = ORDINE_FREQ[b.frequenza]) != null ? _b : 9) || a.ordine - b.ordine;
+  };
   var aperti = /* @__PURE__ */ new Set();
   var primaVolta = true;
   var meseScelto = null;
@@ -1048,7 +1088,7 @@
       <span style="width:78px">${barra(voci.length ? fatte / voci.length * 100 : 0, COLORE)}</span>
       <span class="freccia"></span>
     </button>
-    <div class="elenco">${aperto ? voci.map(compito).join("") : ""}</div>
+    <div class="elenco">${aperto ? voci.slice().sort(perCadenza).map(compito).join("") : ""}</div>
   </div>`;
   }
   function compito(v) {
@@ -1068,6 +1108,44 @@
       <button data-nota-voce="${v.id}" class="${(s == null ? void 0 : s.nota) ? "n-on" : ""}">Note</button>
     </span>
   </div>`;
+  }
+  function aggiornaRiga(root, voceId) {
+    const v = S.dati.pulizie.voci.find((x) => x.id === voceId);
+    if (!v) return false;
+    const bottone = root.querySelector('[data-voce="' + voceId + '"]');
+    const riga = bottone && bottone.closest(".compito");
+    if (!riga) return false;
+    const contenitore = riga.parentNode;
+    const provvisorio = document.createElement("div");
+    provvisorio.innerHTML = compito(v);
+    contenitore.replaceChild(provvisorio.firstElementChild, riga);
+    const cat = categoria(v.categoria_id);
+    if (cat) {
+      const voci = S.dati.pulizie.voci.filter((x) => x.categoria_id === cat.id);
+      const fatte = voci.filter((x) => spunta(x.id) && spunta(x.id).stato === "fatto").length;
+      const capo = root.querySelector('[data-gruppo="' + cat.id + '"]');
+      if (capo) {
+        const et = capo.querySelector(".avanz");
+        if (et) et.textContent = fatte + " di " + voci.length + (fatte === voci.length ? " \xB7 completata" : "");
+        const barra2 = capo.querySelector(".barra i");
+        if (barra2) barra2.style.width = (voci.length ? fatte / voci.length * 100 : 0) + "%";
+      }
+    }
+    const av = avanzamentoPulizie();
+    const cerchio = root.querySelector(".anello .avanti");
+    if (cerchio) {
+      const r = Number(cerchio.getAttribute("r"));
+      const c = 2 * Math.PI * r;
+      cerchio.setAttribute("stroke-dashoffset", String(c * (1 - av.percento / 100)));
+    }
+    const etichetta = root.querySelector('.settimana-barra b[style*="position:absolute"]');
+    if (etichetta) etichetta.textContent = av.percento + "%";
+    const sotto = root.querySelector(".settimana-barra .et span");
+    if (sotto) sotto.textContent = sotto.textContent.replace(
+      /\d+ voc[ei] da fare/,
+      plurale(av.restanti, "voce da fare", "voci da fare")
+    );
+    return true;
   }
   function barraSettimana() {
     const lun = /* @__PURE__ */ new Date(S.settimana + "T00:00:00");
@@ -1107,44 +1185,44 @@
       <span style="font-size:.79rem;color:var(--tenue)">${esc(sotto)}</span></span>
   </div>`;
   }
-  function cardNote() {
-    const lista = note("pulizie");
-    return riq(
-      "Note per chi pulisce",
-      (lista.length ? lista.map((n) => `
-      <div class="log-riga">
-        <span class="log-punto" style="--c:${COLORE}"></span>
-        <span class="tx"><strong>${esc(n.testo)}</strong></span>
-        <div class="riga-azioni">
-          <button data-mod-nota="${n.id}" title="Modifica">&#9998;</button>
-          <button data-elimina-nota="${n.id}" title="Elimina" style="color:var(--rosso)">&#128465;</button>
-        </div>
-      </div>`).join("") : `<p class="vuoto">Nessuna nota</p>`) + `<div style="padding:14px 18px;border-top:1px solid var(--linea-tenue);display:flex;gap:9px">
-       <input type="text" id="nuova-nota" placeholder="Scrivi una nota..." style="flex:1;min-width:0">
-       <button class="btn" style="background:${COLORE}" data-aggiungi-nota>Aggiungi</button>
-     </div>`,
-      { raso: true, meta: lista.length ? lista.length + " note" : "" }
-    );
-  }
   var chiaveNote = (sett) => "pulizie-sett-" + sett;
-  function cardNoteSettimana() {
+  function cardNote() {
+    const fisse = note("pulizie");
     const mia = note(chiaveNote(S.settimana))[0];
     const settPrec = iso(piu(/* @__PURE__ */ new Date(S.settimana + "T00:00:00"), -7));
     const prec = note(chiaveNote(settPrec))[0];
     return riq(
       "Note pulizie",
-      `<div style="padding:0 0 4px">
+      `<div style="padding:16px 18px">
+       <p class="occhiello" style="margin:0 0 7px">Questa settimana</p>
        ${mia ? `<p style="margin:0;white-space:pre-wrap;font-size:.93rem">${esc(mia.testo)}</p>` : `<p style="margin:0;color:var(--tenue);font-size:.9rem">Nessuna nota per questa settimana.</p>`}
+       ${prec ? `
+       <div style="margin-top:14px;padding:11px 13px;background:#F3F0E8;border-radius:10px">
+         <p class="occhiello" style="margin:0 0 5px">Rimasto indietro dalla settimana scorsa</p>
+         <p style="margin:0;white-space:pre-wrap;font-size:.86rem;font-style:italic">${esc(prec.testo)}</p>
+       </div>` : ""}
+       <div style="margin-top:12px">
+         <button class="btn chiaro pieno" data-note-settimana>${mia ? "Modifica le note della settimana" : "Scrivi una nota per questa settimana"}</button>
+       </div>
      </div>
-     ${prec ? `
-     <div style="margin-top:16px;padding:12px 14px;background:#F3F0E8;border-radius:10px">
-       <p class="occhiello" style="margin:0 0 5px">Rimasto indietro dalla settimana scorsa</p>
-       <p style="margin:0;white-space:pre-wrap;font-size:.88rem;font-style:italic">${esc(prec.testo)}</p>
-     </div>` : ""}
-     <div style="margin-top:14px">
-       <button class="btn chiaro pieno" data-note-settimana>${mia ? "Modifica le note" : "Scrivi una nota"}</button>
+
+     <p class="occhiello" style="margin:0;padding:12px 18px 8px;border-top:1px solid var(--linea-tenue);background:#F7F5EE">
+       Indicazioni fisse per chi pulisce</p>
+     ${fisse.length ? fisse.map((n) => `
+       <div class="log-riga">
+         <span class="log-punto" style="--c:${COLORE}"></span>
+         <span class="tx"><strong>${esc(n.testo)}</strong></span>
+         <div class="riga-azioni">
+           <button data-mod-nota="${n.id}">Modifica</button>
+           <button data-elimina-nota="${n.id}" class="pericolo">Elimina</button>
+         </div>
+       </div>`).join("") : `<p class="vuoto">Nessuna indicazione fissa</p>`}
+     <div style="padding:14px 18px;border-top:1px solid var(--linea-tenue);display:flex;gap:9px">
+       <input type="text" id="nuova-nota" placeholder="Aggiungi un indicazione fissa" style="flex:1;min-width:0">
+       <button class="btn" style="background:${COLORE}" data-aggiungi-nota>Aggiungi</button>
      </div>`,
       {
+        raso: true,
         classe: "tinta",
         colore: COLORE,
         meta: breve(/* @__PURE__ */ new Date(S.settimana + "T00:00:00")) + " - " + breve(piu(/* @__PURE__ */ new Date(S.settimana + "T00:00:00"), 6))
@@ -1182,7 +1260,6 @@
              <button class="btn chiaro pieno" data-nuova-giornata>Aggiungi giornata</button></div>`,
       { raso: true, meta: String(totale).replace(".", ",") + " ore a " + nomeMeseSett }
     )}
-        ${cardNoteSettimana()}
         ${cardNote()}
       </div>
     </div>`;
@@ -1418,10 +1495,11 @@
           const voce = seg.dataset.voce, tipo = seg.dataset.segna;
           const attuale = spunta(voce);
           const v = S.dati.pulizie.voci.find((x) => x.id === voce);
-          if ((attuale == null ? void 0 : attuale.stato) === tipo) {
-            applicaSpunta(voce, null);
-            prova(api.togliSpunta(voce, S.settimana));
-            avviso("Spunta tolta");
+          if (attuale && attuale.stato === tipo) {
+            applicaSpunta(voce, null, null, null, { silenzioso: true });
+            if (!aggiornaRiga(root, voce)) contesto.ridisegna();
+            const tolto = await prova(api.togliSpunta(voce, S.settimana));
+            avviso(tolto ? "Spunta tolta" : "Non salvato: " + (ultimoErrore.messaggio || "errore"));
             return;
           }
           const r = await modaleData({
@@ -1438,16 +1516,21 @@
             avviso("Spunta tolta");
             return;
           }
-          applicaSpunta(voce, tipo, r.data, r.persona);
-          aggiungiRegistroLocale("pulizie", tipo, (v == null ? void 0 : v.nome) || voce, r.persona);
-          prova(api.spuntaPulizia({
+          applicaSpunta(voce, tipo, r.data, r.persona, { silenzioso: true });
+          if (!aggiornaRiga(root, voce)) contesto.ridisegna();
+          const salvato = await prova(api.spuntaPulizia({
             voce_id: voce,
             settimana: S.settimana,
             stato: tipo,
             data: iso(r.data),
             persona_id: r.persona
           }));
-          avviso((tipo === "fatto" ? "Fatto il " : "Parziale dal ") + gm(r.data));
+          if (salvato) {
+            aggiungiRegistroLocale("pulizie", tipo, v && v.nome || voce, r.persona);
+            avviso((tipo === "fatto" ? "Fatto il " : "Parziale dal ") + gm(r.data));
+          } else {
+            avviso("Non salvato: " + (ultimoErrore.messaggio || "errore"));
+          }
           return;
         }
         const nv = e.target.closest("[data-nota-voce]");
@@ -2612,7 +2695,12 @@
         ${riq("Dispositivo di casa", `<ul class="cfg" style="margin:-16px -18px">
           ${rigaCfg("Schermo sempre acceso", "L'iPad resta sulla home quando \xE8 in carica.", interruttore(true, COLORE6))}
           ${rigaCfg("Torna alla home dopo", "", `<select><option>2 minuti</option><option selected>5 minuti</option><option>Mai</option></select>`)}
-          ${rigaCfg("Testo grande", "Aumenta i caratteri su tutta l'app.", interruttore(document.body.classList.contains("testo-grande"), COLORE6, "data-testo-grande"))}
+          ${rigaCfg(
+        "Dimensione del testo",
+        "Su iPad conviene ridurlo: ci sta piu' roba senza scorrere.",
+        `<select data-misura-testo>${MISURE_TESTO.map((m) => `<option value="${m.id}" ${m.id === misuraTesto() ? "selected" : ""}>${m.nome}</option>`).join("")}
+             </select>`
+      )}
         </ul>`)}
       </div>
       <div class="griglia" style="align-content:start">
@@ -2638,12 +2726,11 @@
     </div>`;
     },
     aggancia(root) {
+      root.addEventListener("change", (e) => {
+        const sel = e.target.closest("[data-misura-testo]");
+        if (sel) applicaMisuraTesto(sel.value);
+      });
       root.addEventListener("click", async (e) => {
-        if (e.target.closest("[data-testo-grande]")) {
-          document.body.classList.toggle("testo-grande");
-          localStorage.setItem("ferrafoni.testoGrande", document.body.classList.contains("testo-grande") ? "1" : "0");
-          return;
-        }
         if (e.target.closest("[data-salva-chiave-gen]")) {
           salvaChiave(root.querySelector("#chiave-generale").value.trim());
           carica();
@@ -2806,7 +2893,12 @@
     const scorri = $("#scorri");
     const posizione = scorri.scrollTop;
     corpo.innerHTML = opzioni.silenzioso ? m.render(vista.sezione, contesto) : `<div class="entra">${m.render(vista.sezione, contesto)}</div>`;
-    if (posizione) scorri.scrollTop = posizione;
+    if (posizione) {
+      scorri.scrollTop = posizione;
+      requestAnimationFrame(() => {
+        if (scorri.scrollTop !== posizione) scorri.scrollTop = posizione;
+      });
+    }
     if (!agganciati.has(m.id) && m.aggancia) {
       m.aggancia(radicePerModulo(m.id), { vai, ridisegna: disegna });
       m.ridisegna = disegna;
@@ -2885,7 +2977,7 @@
   }
   async function avvia() {
     verificaFlexGap();
-    if (localStorage.getItem("ferrafoni.testoGrande") === "1") document.body.classList.add("testo-grande");
+    applicaMisuraTesto(misuraTesto());
     agganciaGuscio();
     agganciaModale();
     agganciaModaleForm();

@@ -1,8 +1,9 @@
 // Impostazioni della casa: persone, dispositivo, dati e aspetto.
 
-import { esc, avviso } from '../util.js';
+import { esc, avviso, applicaMisuraTesto, misuraTesto, MISURE_TESTO } from '../util.js';
 import { riq, rigaCfg, interruttore, modaleForm } from '../ui.js';
 import { chiave, salvaChiave, rete, api, prova } from '../api.js';
+
 import * as S from '../stato.js';
 
 const COLORE = 'var(--home)';
@@ -54,7 +55,10 @@ export default {
         ${riq('Dispositivo di casa', `<ul class="cfg" style="margin:-16px -18px">
           ${rigaCfg('Schermo sempre acceso','L\'iPad resta sulla home quando è in carica.', interruttore(true, COLORE))}
           ${rigaCfg('Torna alla home dopo','', `<select><option>2 minuti</option><option selected>5 minuti</option><option>Mai</option></select>`)}
-          ${rigaCfg('Testo grande','Aumenta i caratteri su tutta l\'app.', interruttore(document.body.classList.contains('testo-grande'), COLORE, 'data-testo-grande'))}
+          ${rigaCfg('Dimensione del testo','Su iPad conviene ridurlo: ci sta piu\' roba senza scorrere.',
+            `<select data-misura-testo>${MISURE_TESTO.map(m =>
+               `<option value="${m.id}" ${m.id === misuraTesto() ? 'selected' : ''}>${m.nome}</option>`).join('')}
+             </select>`)}
         </ul>`)}
       </div>
       <div class="griglia" style="align-content:start">
@@ -75,12 +79,14 @@ export default {
   },
 
   aggancia(root){
+    // il selettore della dimensione applica subito, senza ridisegnare
+    root.addEventListener('change', e => {
+      const sel = e.target.closest('[data-misura-testo]');
+      if (sel) applicaMisuraTesto(sel.value);
+    });
+
     root.addEventListener('click', async e => {
-      if (e.target.closest('[data-testo-grande]')) {
-        document.body.classList.toggle('testo-grande');
-        localStorage.setItem('ferrafoni.testoGrande', document.body.classList.contains('testo-grande') ? '1' : '0');
-        return;
-      }
+
       if (e.target.closest('[data-salva-chiave-gen]')) {
         salvaChiave(root.querySelector('#chiave-generale').value.trim());
         S.carica();
